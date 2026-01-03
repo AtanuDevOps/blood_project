@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BloodLog - Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- FIREBASE CDN SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    
+    <!-- Navbar (Minimal) -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html"><i class="fa-solid fa-droplet"></i> BloodConnect</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="auth-wrapper">
+        <div class="container" id="container">
+            <!-- Sign Up Form (Right Side initially) -->
+            <div class="form-container sign-up-container">
+                <form id="signupForm">
+                    <h1>Create Account</h1>
+                    <p class="social-text">Use your phone number for registration</p>
+                    
+                    <input type="text" id="signupName" placeholder="Full Name" required />
+                    <input type="tel" id="signupPhone" placeholder="Phone Number" required />
+                    
+                    <div class="select-container" style="width: 100%;">
+                        <select id="signupBloodGroup" required>
+                            <option value="" disabled selected>Select Blood Group</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+
+                    <input type="text" id="signupLocation" placeholder="Location" required />
+                    <input type="password" id="signupPassword" placeholder="Password" required />
+                    
+                    <button type="submit" class="btn-red">SIGN UP</button>
+                    <p class="mobile-toggle-text">Already have an account? <a href="#" id="mobile-signIn">Sign In</a></p>
+                </form>
+            </div>
+
+            <!-- Sign In Form (Hidden/Left Side initially) -->
+            <div class="form-container sign-in-container">
+                <form id="loginForm">
+                    <h1>Sign in</h1>
+                    <p class="social-text">Login to your account</p>
+                    
+                    <input type="tel" id="loginPhone" placeholder="Phone Number" required />
+                    <input type="password" id="loginPassword" placeholder="Password" required />
+                    
+                    <a href="#">Forgot your password?</a>
+                    <button type="submit" class="btn-red">SIGN IN</button>
+                    <p class="mobile-toggle-text">Don't have an account? <a href="#" id="mobile-signUp">Sign Up</a></p>
+                </form>
+            </div>
+
+            <!-- Overlay Container (The Moving Part) -->
+            <div class="overlay-container">
+                <div class="overlay">
+                    <!-- Left Overlay Panel (Visible initially) -->
+                    <div class="overlay-panel overlay-left">
+                        <h1>Welcome Back!</h1>
+                        <p>Enter your personal details to use all of site features</p>
+                        <button class="ghost" id="signIn">SIGN IN</button>
+                    </div>
+                    
+                    <!-- Right Overlay Panel (Hidden initially, appears when toggled) -->
+                    <div class="overlay-panel overlay-right">
+                        <h1>Hello, Donor!</h1>
+                        <p>Register with your personal details to start saving lives</p>
+                        <button class="ghost" id="signUp">SIGN UP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Config FIRST, then App Logic -->
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

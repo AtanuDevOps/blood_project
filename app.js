@@ -112,8 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             querySnapshot.forEach((doc) => {
                 const donor = doc.data();
                 
-                // Exclude current user from results if logged in (optional)
-                // if(currentUser && doc.id === currentUser.uid) return;
+                // Exclude current user from results if logged in
+                if(currentUser && doc.id === currentUser.uid) return;
 
                 // Client-side Filtering
                 const donorName = (donor.name || "").toLowerCase();
@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fa-solid fa-location-dot"></i> ${escapeHtml(location)}
                 </div>
                 <button class="btn-view" 
+                    data-id="${id}" 
                     data-name="${escapeHtml(name)}"
                     data-blood="${escapeHtml(blood)}"
                     data-location="${escapeHtml(location)}"
@@ -195,14 +196,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function getOrSetRequesterId() {
+        if (currentUser) return currentUser.uid;
+        
+        let anonId = localStorage.getItem('anonymousRequesterId');
+        if (!anonId) {
+            anonId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('anonymousRequesterId', anonId);
+        }
+        return anonId;
+    }
+
     function openModal(data) {
         const modal = document.getElementById('donorModal');
         const modalName = document.getElementById('modalName');
         const modalBlood = document.getElementById('modalBlood');
         const modalLocation = document.getElementById('modalLocation');
         const modalPhone = document.getElementById('modalPhone');
-        const showContactBtn = document.getElementById('showContactBtn');
+        
+        let requestContactBtn = document.getElementById('requestContactBtn');
         const callBtn = document.getElementById('callBtn');
+        const statusMsg = document.getElementById('requestStatusMsg');
 
         if (!modal) return;
 
@@ -211,23 +225,105 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBlood.textContent = data.blood;
         modalLocation.textContent = data.location;
         
-        // Reset Phone State
-        modalPhone.textContent = "Click 'Show Contact'";
-        modalPhone.classList.remove('revealed');
-        showContactBtn.classList.remove('hidden');
-        callBtn.classList.add('hidden');
-
-        // Handle Show Contact
-        // Clone to remove old listeners
-        const newBtn = showContactBtn.cloneNode(true);
-        showContactBtn.parentNode.replaceChild(newBtn, showContactBtn);
+        // Reset Phone State (Follow user requirement: Show text if not approved)
+        // Remove blur class so text is readable
+        modalPhone.classList.remove('blur-text', 'revealed'); 
+        modalPhone.textContent = "Contact info will be visible after donor approval";
+        modalPhone.style.color = "#888"; // Dimmed text for instruction
+        modalPhone.style.fontStyle = "italic";
         
-        newBtn.addEventListener('click', () => {
-            modalPhone.textContent = data.phone;
-            modalPhone.classList.add('revealed');
-            callBtn.href = `tel:${data.phone}`;
-            callBtn.classList.remove('hidden');
-            newBtn.classList.add('hidden');
+        // Reset Buttons & Status
+        // Clone button immediately to remove old listeners and ensure we work with the live DOM element
+        const newBtn = requestContactBtn.cloneNode(true);
+        requestContactBtn.parentNode.replaceChild(newBtn, requestContactBtn);
+        requestContactBtn = newBtn; // Update reference to the live button
+
+        requestContactBtn.classList.remove('hidden');
+        requestContactBtn.disabled = false;
+        requestContactBtn.textContent = "Request Contact";
+        callBtn.classList.add('hidden');
+        
+        statusMsg.className = 'status-message-box'; // reset classes
+        statusMsg.textContent = '';
+        statusMsg.classList.remove('visible');
+
+        // Check Request Status
+        const requesterId = getOrSetRequesterId();
+        const docId = `${data.id}_${requesterId}`;
+        const db = firebase.firestore();
+
+        // Show loading state on button
+        requestContactBtn.textContent = "Checking...";
+        requestContactBtn.disabled = true;
+
+        db.collection('contactRequests').doc(docId).get().then((doc) => {
+            if (doc.exists) {
+                const req = doc.data();
+                if (req.status === 'approved') {
+                    // Approved: Show Phone
+                    modalPhone.textContent = data.phone;
+                    modalPhone.classList.add('revealed'); 
+                    modalPhone.style.color = "#333";
+                    modalPhone.style.fontStyle = "normal";
+                    modalPhone.style.fontWeight = "bold";
+                    
+                    requestContactBtn.classList.add('hidden');
+                    
+                    callBtn.href = `tel:${data.phone}`;
+                    callBtn.classList.remove('hidden');
+                    
+                    statusMsg.textContent = "Request Approved! You can now contact this donor.";
+                    statusMsg.classList.add('visible', 'approved');
+                } else if (req.status === 'pending') {
+                    // Pending
+                    requestContactBtn.classList.add('hidden'); // Hide button as per requirements
+                    statusMsg.textContent = "Request sent. Waiting for approval.";
+                    statusMsg.classList.add('visible', 'pending');
+                } else if (req.status === 'rejected') {
+                    // Rejected
+                    requestContactBtn.classList.add('hidden'); // Hide button as per requirements
+                    statusMsg.textContent = "Request rejected by donor.";
+                    statusMsg.classList.add('visible', 'rejected');
+                }
+            } else {
+                // No request yet
+                requestContactBtn.textContent = "Request Contact";
+                requestContactBtn.disabled = false;
+                requestContactBtn.classList.remove('hidden');
+            }
+        }).catch(err => {
+            console.error("Error checking status:", err);
+            requestContactBtn.textContent = "Request Contact";
+            requestContactBtn.disabled = false;
+            requestContactBtn.classList.remove('hidden');
+        });
+
+        // Handle Request Button Click
+        requestContactBtn.addEventListener('click', () => {
+            const nameInput = prompt("Please enter your name (optional) so the donor knows who is asking:", "Anonymous");
+            if (nameInput === null) return; // Cancelled
+
+            const requesterName = nameInput.trim() || "Anonymous";
+            
+            requestContactBtn.textContent = "Sending...";
+            requestContactBtn.disabled = true;
+
+            db.collection('contactRequests').doc(docId).set({
+                donorId: data.id,
+                requesterId: requesterId,
+                requesterName: requesterName,
+                status: 'pending',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                requestContactBtn.classList.add('hidden');
+                statusMsg.textContent = "Request sent. Waiting for approval.";
+                statusMsg.classList.add('visible', 'pending');
+            }).catch((error) => {
+                console.error("Error sending request:", error);
+                alert("Failed to send request. Please try again.");
+                requestContactBtn.textContent = "Request Contact";
+                requestContactBtn.disabled = false;
+            });
         });
 
         modal.classList.add('show');
@@ -336,16 +432,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('userPhone').textContent = data.phone || '-';
                 document.getElementById('userBlood').textContent = data.bloodGroup || '-';
                 document.getElementById('userLocation').textContent = data.location || '-';
+                
+                // Load Contact Requests
+                loadContactRequests(uid);
             }
         });
         
         // Logout button in profile is handled by the shared updateNavbar logic 
         // OR the static one in profile.html if navbar isn't there.
-        // But wait, profile.html has a specific "LOG OUT" button in the card too.
         const profileLogoutBtn = document.querySelector('.profile-card #logoutBtn');
         if(profileLogoutBtn) {
             profileLogoutBtn.addEventListener('click', logout);
         }
+    }
+
+    function loadContactRequests(uid) {
+        const requestsList = document.getElementById('requestsList');
+        const section = document.getElementById('contactRequestsSection');
+        if (!requestsList || !section) return;
+
+        section.style.display = 'block';
+
+        const db = firebase.firestore();
+        
+        // Listen for requests (Real-time)
+        db.collection('contactRequests')
+          .where('donorId', '==', uid)
+          .onSnapshot((snapshot) => {
+              if (snapshot.empty) {
+                  requestsList.innerHTML = '<div style="text-align:center; padding:15px; color:#888; font-size:14px;">No requests yet.</div>';
+                  return;
+              }
+
+              let html = '';
+              const requests = [];
+              snapshot.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
+              
+              // Client-side Sort (Newest first)
+              requests.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+              requests.forEach(req => {
+                  const date = req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : 'Just now';
+                  
+                  let actionButtons = '';
+                  let statusBadge = '';
+
+                  if (req.status === 'pending') {
+                      actionButtons = `
+                          <button class="btn-accept" onclick="handleRequestAction('${req.id}', 'approved')">Accept</button>
+                          <button class="btn-reject" onclick="handleRequestAction('${req.id}', 'rejected')">Reject</button>
+                      `;
+                      statusBadge = `<span class="status-badge status-pending">PENDING</span>`;
+                  } else if (req.status === 'approved') {
+                      statusBadge = `<span class="status-badge status-approved">APPROVED</span>`;
+                  } else {
+                      statusBadge = `<span class="status-badge status-rejected">REJECTED</span>`;
+                  }
+
+                  // If status is not pending, we don't show buttons, just badge
+                  // Structure: Info | [Buttons] Badge
+                  
+                  html += `
+                      <div class="request-item">
+                          <div class="request-info">
+                              <span class="req-name">${escapeHtml(req.requesterName)}</span>
+                              <span class="req-date">${date}</span>
+                          </div>
+                          <div class="req-actions">
+                              ${actionButtons}
+                              ${statusBadge}
+                          </div>
+                      </div>
+                  `;
+              });
+              requestsList.innerHTML = html;
+          }, (error) => {
+              console.error("Error loading requests:", error);
+              requestsList.innerHTML = '<div style="color:red;">Error loading requests.</div>';
+          });
+    }
+
+    // Make available globally for onclick handlers
+    window.handleRequestAction = function(requestId, action) {
+        if(!confirm(`Are you sure you want to ${action} this request?`)) return;
+
+        firebase.firestore().collection('contactRequests').doc(requestId).update({
+            status: action
+        }).catch(err => {
+            console.error("Error updating request:", err);
+            alert("Error: " + err.message);
+        });
     }
 
     // Helper

@@ -146,10 +146,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = donor.name || "Unknown Name";
         const blood = donor.bloodGroup || "?";
         const location = donor.location || "Unknown Location";
-        const phone = donor.phone || "";
+        
+        // Cooldown Logic
+        let statusBadge = '<div class="card-status-badge available">Available</div>';
+        let isCooldown = false;
+        let daysText = "";
+
+        if (donor.nextAvailableDate) {
+            const nextDate = donor.nextAvailableDate.toDate();
+            const now = new Date();
+            if (nextDate > now) {
+                isCooldown = true;
+                const diffTime = Math.abs(nextDate - now);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                statusBadge = `<div class="card-status-badge cooldown">Available in ${diffDays} days</div>`;
+                daysText = `Back in ${diffDays} days`;
+            }
+        }
+
+        // Privacy: Hide phone number in DOM if cooldown
+        const phone = isCooldown ? "" : (donor.phone || "");
 
         return `
             <div class="donor-card">
+                ${statusBadge}
                 <div class="card-avatar">
                     <i class="fa-solid fa-user"></i>
                 </div>
@@ -163,7 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     data-name="${escapeHtml(name)}"
                     data-blood="${escapeHtml(blood)}"
                     data-location="${escapeHtml(location)}"
-                    data-phone="${escapeHtml(phone)}">
+                    data-phone="${escapeHtml(phone)}"
+                    data-cooldown="${isCooldown}"
+                    data-daystext="${daysText}">
                     View Profile
                 </button>
             </div>
@@ -225,27 +247,44 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBlood.textContent = data.blood;
         modalLocation.textContent = data.location;
         
-        // Reset Phone State (Follow user requirement: Show text if not approved)
-        // Remove blur class so text is readable
+        // Cooldown Check
+        const isCooldown = data.cooldown === "true";
+        
+        // Reset Phone State
         modalPhone.classList.remove('blur-text', 'revealed'); 
-        modalPhone.textContent = "Contact info will be visible after donor approval";
-        modalPhone.style.color = "#888"; // Dimmed text for instruction
-        modalPhone.style.fontStyle = "italic";
+        
+        if (isCooldown) {
+            modalPhone.textContent = "Donor is currently recovering";
+            modalPhone.style.color = "#d9534f"; // Red warning
+            modalPhone.style.fontStyle = "italic";
+        } else {
+            modalPhone.textContent = "Contact info will be visible after donor approval";
+            modalPhone.style.color = "#888";
+            modalPhone.style.fontStyle = "italic";
+        }
         
         // Reset Buttons & Status
-        // Clone button immediately to remove old listeners and ensure we work with the live DOM element
         const newBtn = requestContactBtn.cloneNode(true);
         requestContactBtn.parentNode.replaceChild(newBtn, requestContactBtn);
-        requestContactBtn = newBtn; // Update reference to the live button
+        requestContactBtn = newBtn; 
+
+        statusMsg.className = 'status-message-box';
+        statusMsg.textContent = '';
+        statusMsg.classList.remove('visible');
+        callBtn.classList.add('hidden');
+
+        // If Cooldown, Disable Everything immediately
+        if (isCooldown) {
+            requestContactBtn.classList.add('hidden');
+            statusMsg.textContent = `This donor is on recovery period. ${data.daystext || "Available later"}.`;
+            statusMsg.classList.add('visible', 'rejected'); // Re-use rejected style for red alert
+            modal.classList.add('show');
+            return; // EXIT EARLY
+        }
 
         requestContactBtn.classList.remove('hidden');
         requestContactBtn.disabled = false;
         requestContactBtn.textContent = "Request Contact";
-        callBtn.classList.add('hidden');
-        
-        statusMsg.className = 'status-message-box'; // reset classes
-        statusMsg.textContent = '';
-        statusMsg.classList.remove('visible');
 
         // Check Request Status
         const requesterId = getOrSetRequesterId();
@@ -424,26 +463,225 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. PROFILE LOGIC (profile.html)
     // =========================================================================
     function loadProfileData(uid) {
+        console.log("Loading profile data for:", uid);
         const db = firebase.firestore();
         db.collection("users").doc(uid).get().then((doc) => {
             if (doc.exists) {
+                console.log("User document found");
                 const data = doc.data();
                 document.getElementById('userName').textContent = data.name || 'User';
                 document.getElementById('userPhone').textContent = data.phone || '-';
                 document.getElementById('userBlood').textContent = data.bloodGroup || '-';
                 document.getElementById('userLocation').textContent = data.location || '-';
                 
+                // =========================================================
+                // PROFILE PHOTO LOGIC
+                // =========================================================
+                const profilePhoto = document.getElementById('profilePhoto');
+                const defaultIcon = document.getElementById('defaultAvatarIcon');
+                const uploadBtn = document.getElementById('uploadPhotoBtn');
+                const fileInput = document.getElementById('photoUploadInput');
+
+                // 1. Show Upload Button (User is a donor)
+                if (uploadBtn) {
+                     uploadBtn.style.display = 'inline-block'; 
+                }
+
+                // 2. Display Existing Photo
+                if (data.photoURL) {
+                    console.log("Found existing photoURL:", data.photoURL);
+                    if (profilePhoto) {
+                        profilePhoto.src = data.photoURL;
+                        profilePhoto.style.display = 'block';
+                    }
+                    if (defaultIcon) defaultIcon.style.display = 'none';
+                } else {
+                    console.log("No photoURL found, using default.");
+                }
+
+                // 3. Attach Upload Events
+                if (uploadBtn && fileInput) {
+                    // Remove old listeners by cloning
+                    const newUploadBtn = uploadBtn.cloneNode(true);
+                    uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
+                    
+                    newUploadBtn.addEventListener('click', () => {
+                        console.log("Upload button clicked");
+                        fileInput.click();
+                    });
+
+                    // Re-attach file input listener
+                    const newFileInput = fileInput.cloneNode(true);
+                    fileInput.parentNode.replaceChild(newFileInput, fileInput);
+
+                    newFileInput.addEventListener('change', async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        console.log("File selected:", file.name);
+
+                        // Immediate Preview (for better UX)
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            if (profilePhoto) {
+                                profilePhoto.src = e.target.result;
+                                profilePhoto.style.display = 'block';
+                            }
+                            if (defaultIcon) defaultIcon.style.display = 'none';
+                        };
+                        reader.readAsDataURL(file);
+
+                        // Upload Flow
+                        try {
+                            newUploadBtn.textContent = "Uploading...";
+                            newUploadBtn.disabled = true;
+
+                            const storageRef = firebase.storage().ref();
+                            // 1. Storage Upload: profilePictures/{uid}.jpg
+                            const fileRef = storageRef.child(`profilePictures/${uid}.jpg`);
+                            
+                            // Await upload completion
+                            const snapshot = await fileRef.put(file);
+                            console.log("File uploaded successfully");
+
+                            // 2. Download URL
+                            const url = await snapshot.ref.getDownloadURL();
+                            console.log("Download URL obtained:", url);
+                            
+                            if (!url) throw new Error("Failed to retrieve download URL");
+
+                            // 3. Firestore Update (using merge: true)
+                            // Updating 'users' collection as it serves as the donor database
+                            await db.collection("users").doc(uid).set({
+                                photoURL: url
+                            }, { merge: true });
+                            console.log("Firestore updated successfully");
+
+                            // 4. UI Update (Ensure final URL is set)
+                            if (profilePhoto) {
+                                profilePhoto.src = url;
+                                profilePhoto.style.display = 'block';
+                            }
+                            if (defaultIcon) defaultIcon.style.display = 'none';
+
+                            alert("Photo uploaded successfully!");
+
+                        } catch (error) {
+                            // 6. Error Handling
+                            console.error("Error in profile photo upload:", error);
+                            alert("Error uploading photo: " + error.message);
+                            
+                            // Revert UI if needed (optional, but good for consistency)
+                            if (data.photoURL) {
+                                profilePhoto.src = data.photoURL;
+                            } else {
+                                profilePhoto.style.display = 'none';
+                                defaultIcon.style.display = 'block';
+                            }
+
+                        } finally {
+                            newUploadBtn.textContent = "Upload / Change Profile Photo";
+                            newUploadBtn.disabled = false;
+                        }
+                    });
+                }
+                
+                // Donation Status Logic
+                updateDonationStatusUI(data);
+
                 // Load Contact Requests
                 loadContactRequests(uid);
+            } else {
+                console.log("No user document found!");
             }
-        });
+        }).catch(err => console.error("Error loading profile:", err));
         
+        // Donation Button Event
+        const donatedBtn = document.getElementById('donatedTodayBtn');
+        if(donatedBtn) {
+            // Remove old listeners
+            const newBtn = donatedBtn.cloneNode(true);
+            donatedBtn.parentNode.replaceChild(newBtn, donatedBtn);
+            
+            newBtn.addEventListener('click', () => {
+                if(confirm("Are you sure you donated blood today? This will start a 180-day cooldown.")) {
+                    registerDonation(uid);
+                }
+            });
+        }
+
         // Logout button in profile is handled by the shared updateNavbar logic 
         // OR the static one in profile.html if navbar isn't there.
         const profileLogoutBtn = document.querySelector('.profile-card #logoutBtn');
         if(profileLogoutBtn) {
             profileLogoutBtn.addEventListener('click', logout);
         }
+    }
+
+    function updateDonationStatusUI(data) {
+        const statusIndicator = document.getElementById('statusIndicator');
+        const lastDateEl = document.getElementById('lastDonationDate');
+        const nextDateEl = document.getElementById('nextAvailableDate');
+        const daysRemainingEl = document.getElementById('daysRemaining');
+        const donatedBtn = document.getElementById('donatedTodayBtn');
+
+        if(!statusIndicator) return;
+
+        let lastDate = data.lastDonationDate ? data.lastDonationDate.toDate() : null;
+        let nextDate = data.nextAvailableDate ? data.nextAvailableDate.toDate() : null;
+        const now = new Date();
+
+        // Display Dates
+        lastDateEl.textContent = lastDate ? lastDate.toLocaleDateString() : "Never";
+        nextDateEl.textContent = nextDate ? nextDate.toLocaleDateString() : "Now";
+
+        // Check Status
+        if (nextDate && nextDate > now) {
+            // Cooldown
+            statusIndicator.textContent = "Cooldown Period";
+            statusIndicator.className = "status-indicator cooldown";
+            
+            const diffTime = Math.abs(nextDate - now);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            daysRemainingEl.textContent = `${diffDays} days remaining`;
+            
+            donatedBtn.disabled = true;
+            donatedBtn.textContent = "Cannot donate yet";
+        } else {
+            // Available
+            statusIndicator.textContent = "Available to Donate";
+            statusIndicator.className = "status-indicator available";
+            daysRemainingEl.textContent = "";
+            
+            donatedBtn.disabled = false;
+            donatedBtn.textContent = "I Donated Blood Today";
+
+            // Lazy Update DB if it was stuck in cooldown
+            if (data.status === 'cooldown') {
+                firebase.firestore().collection("users").doc(firebase.auth().currentUser.uid).update({
+                    status: 'available'
+                });
+            }
+        }
+    }
+
+    function registerDonation(uid) {
+        const db = firebase.firestore();
+        const now = new Date();
+        const nextDate = new Date(now);
+        nextDate.setDate(now.getDate() + 180); // 180 days cooldown
+
+        db.collection("users").doc(uid).update({
+            lastDonationDate: firebase.firestore.Timestamp.fromDate(now),
+            nextAvailableDate: firebase.firestore.Timestamp.fromDate(nextDate),
+            status: 'cooldown'
+        }).then(() => {
+            alert("Donation recorded! Thank you for saving lives.");
+            loadProfileData(uid); // Refresh UI
+        }).catch((error) => {
+            console.error("Error updating donation:", error);
+            alert("Error: " + error.message);
+        });
     }
 
     function loadContactRequests(uid) {

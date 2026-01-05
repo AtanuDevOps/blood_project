@@ -92,9 +92,14 @@
     <div class="container" id="container">
         <div class="profile-card">
             <div class="profile-header">
-                <div class="profile-avatar">
-                    <i class="fa-solid fa-user"></i>
+                <div class="profile-avatar" id="avatarContainer" style="position: relative; overflow: hidden;">
+                    <i class="fa-solid fa-user" id="defaultAvatarIcon"></i>
+                    <img id="profilePhoto" src="" alt="Profile Photo" style="display: none; width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;">
                 </div>
+                
+                <button id="uploadPhotoBtn" class="btn-view" style="margin-bottom: 15px; font-size: 12px; display: none;">Upload / Change Profile Photo</button>
+                <input type="file" id="photoUploadInput" accept="image/*" style="display: none;">
+
                 <h1 id="userName">Loading...</h1>
                 <p>Donor Profile</p>
             </div>
@@ -112,6 +117,20 @@
                     <span class="detail-label">Location</span>
                     <span class="detail-value" id="userLocation">-</span>
                 </div>
+            </div>
+
+            <!-- Donation Status Section -->
+            <div class="donation-status-card" style="width: 100%; max-width: 400px;">
+                <h3>Donation Status</h3>
+                <div id="statusIndicator" class="status-indicator available">Checking...</div>
+                
+                <div class="cooldown-info">
+                    <div id="lastDonationInfo">Last Donation: <span id="lastDonationDate">-</span></div>
+                    <div id="nextAvailableInfo">Next Available: <span id="nextAvailableDate">-</span></div>
+                    <span id="daysRemaining" class="cooldown-days"></span>
+                </div>
+
+                <button id="donatedTodayBtn" class="btn-donated">I Donated Blood Today</button>
             </div>
 
             <!-- Contact Requests Section -->

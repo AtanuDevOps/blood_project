@@ -175,11 +175,33 @@ body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     text-align: center;
     transition: transform 0.3s, box-shadow 0.3s;
+    position: relative; /* For badge positioning */
 }
 
 .donor-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.card-status-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.card-status-badge.available {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.card-status-badge.cooldown {
+    background-color: #fff3cd;
+    color: #856404;
 }
 
 .card-avatar {
@@ -910,4 +932,82 @@ body {
         font-weight: bold;
         text-decoration: none;
     }
+}
+
+/* =========================================
+   DONATION COOLDOWN STATUS
+   ========================================= */
+.donation-status-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    text-align: center;
+    border: 1px solid #eee;
+}
+
+.donation-status-card h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.status-indicator {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.status-indicator.available {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-indicator.cooldown {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.cooldown-info {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.cooldown-days {
+    font-size: 24px;
+    font-weight: bold;
+    color: #CE1126;
+    display: block;
+    margin-top: 5px;
+}
+
+.btn-donated {
+    background-color: #CE1126;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 30px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+    box-shadow: 0 4px 6px rgba(206, 17, 38, 0.2);
+}
+
+.btn-donated:hover {
+    background-color: #b71c1c;
+    transform: translateY(-2px);
+}
+
+.btn-donated:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }

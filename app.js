@@ -146,6 +146,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = donor.name || "Unknown Name";
         const blood = donor.bloodGroup || "?";
         const location = donor.location || "Unknown Location";
+        const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
+        const baseText = (name || '').trim().charAt(0).toUpperCase();
+        const altText = (blood || '').trim();
+        const avatarText = donor.avatarText || (baseText || altText || '?');
+        const avatarColor = donor.avatarColor || palette[Math.floor(Math.random() * palette.length)];
+        if (!donor.avatarText || !donor.avatarColor) {
+            firebase.firestore().collection("donors").doc(id).set({
+                avatarText: avatarText,
+                avatarColor: avatarColor
+            }, { merge: true });
+        }
         
         // Cooldown Logic
         let statusBadge = '<div class="card-status-badge available">Available</div>';
@@ -166,13 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Privacy: Hide phone number in DOM if cooldown
         const phone = isCooldown ? "" : (donor.phone || "");
-
+        
         return `
             <div class="donor-card">
                 ${statusBadge}
-                <div class="card-avatar">
-                    <i class="fa-solid fa-user"></i>
-                </div>
+                <div class="card-avatar" style="background:${avatarColor};color:#fff;">${avatarText}</div>
                 <div class="card-name">${escapeHtml(name)}</div>
                 <div class="card-blood">${escapeHtml(blood)}</div>
                 <div class="card-info">
@@ -421,16 +430,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const email = `${phone}@bloodlog.com`; // Fake email strategy
-        
+        const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
+        const avatarText = (name || '').trim().charAt(0).toUpperCase() || (bloodGroup || '?');
+        const avatarColor = palette[Math.floor(Math.random() * palette.length)];
         firebase.auth().createUserWithEmailAndPassword(email, password)
             .then((userCredential) => {
-                return firebase.firestore().collection("users").doc(userCredential.user.uid).set({
+                const uid = userCredential.user.uid;
+                const db = firebase.firestore();
+                return db.collection("users").doc(uid).set({
                     name: name,
                     phone: phone,
                     bloodGroup: bloodGroup,
                     location: location,
                     email: email,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    avatarText: avatarText,
+                    avatarColor: avatarColor
+                }).then(() => {
+                    return db.collection("donors").doc(uid).set({
+                        avatarText: avatarText,
+                        avatarColor: avatarColor
+                    }, { merge: true });
                 });
             })
             .then(() => {
@@ -473,119 +493,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('userPhone').textContent = data.phone || '-';
                 document.getElementById('userBlood').textContent = data.bloodGroup || '-';
                 document.getElementById('userLocation').textContent = data.location || '-';
-                
-                // =========================================================
-                // PROFILE PHOTO LOGIC
-                // =========================================================
+                const avatarContainer = document.getElementById('avatarContainer');
                 const profilePhoto = document.getElementById('profilePhoto');
                 const defaultIcon = document.getElementById('defaultAvatarIcon');
                 const uploadBtn = document.getElementById('uploadPhotoBtn');
-                const fileInput = document.getElementById('photoUploadInput');
-
-                // 1. Show Upload Button (User is a donor)
-                if (uploadBtn) {
-                     uploadBtn.style.display = 'inline-block'; 
+                if (uploadBtn) uploadBtn.style.display = 'none';
+                if (profilePhoto) profilePhoto.style.display = 'none';
+                if (defaultIcon) defaultIcon.style.display = 'none';
+                const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
+                const baseText = (data.name || '').trim().charAt(0).toUpperCase();
+                const altText = (data.bloodGroup || '').trim();
+                const avatarText = data.avatarText || (baseText || altText || '?');
+                const avatarColor = data.avatarColor || palette[Math.floor(Math.random() * palette.length)];
+                if (avatarContainer) {
+                    avatarContainer.textContent = avatarText;
+                    avatarContainer.style.backgroundColor = avatarColor;
+                    avatarContainer.style.color = '#ffffff';
                 }
-
-                // 2. Display Existing Photo
-                if (data.photoURL) {
-                    console.log("Found existing photoURL:", data.photoURL);
-                    if (profilePhoto) {
-                        profilePhoto.src = data.photoURL;
-                        profilePhoto.style.display = 'block';
-                    }
-                    if (defaultIcon) defaultIcon.style.display = 'none';
-                } else {
-                    console.log("No photoURL found, using default.");
+                const updates = {};
+                if (!data.avatarText) updates.avatarText = avatarText;
+                if (!data.avatarColor) updates.avatarColor = avatarColor;
+                if (Object.keys(updates).length > 0) {
+                    db.collection("users").doc(uid).set(updates, { merge: true });
+                    db.collection("donors").doc(uid).set(updates, { merge: true });
                 }
-
-                // 3. Attach Upload Events
-                if (uploadBtn && fileInput) {
-                    // Remove old listeners by cloning
-                    const newUploadBtn = uploadBtn.cloneNode(true);
-                    uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
-                    
-                    newUploadBtn.addEventListener('click', () => {
-                        console.log("Upload button clicked");
-                        fileInput.click();
-                    });
-
-                    // Re-attach file input listener
-                    const newFileInput = fileInput.cloneNode(true);
-                    fileInput.parentNode.replaceChild(newFileInput, fileInput);
-
-                    newFileInput.addEventListener('change', async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        
-                        console.log("File selected:", file.name);
-
-                        // Immediate Preview (for better UX)
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            if (profilePhoto) {
-                                profilePhoto.src = e.target.result;
-                                profilePhoto.style.display = 'block';
-                            }
-                            if (defaultIcon) defaultIcon.style.display = 'none';
-                        };
-                        reader.readAsDataURL(file);
-
-                        // Upload Flow
-                        try {
-                            newUploadBtn.textContent = "Uploading...";
-                            newUploadBtn.disabled = true;
-
-                            const storageRef = firebase.storage().ref();
-                            // 1. Storage Upload: profilePictures/{uid}.jpg
-                            const fileRef = storageRef.child(`profilePictures/${uid}.jpg`);
-                            
-                            // Await upload completion
-                            const snapshot = await fileRef.put(file);
-                            console.log("File uploaded successfully");
-
-                            // 2. Download URL
-                            const url = await snapshot.ref.getDownloadURL();
-                            console.log("Download URL obtained:", url);
-                            
-                            if (!url) throw new Error("Failed to retrieve download URL");
-
-                            // 3. Firestore Update (using merge: true)
-                            // Updating 'users' collection as it serves as the donor database
-                            await db.collection("users").doc(uid).set({
-                                photoURL: url
-                            }, { merge: true });
-                            console.log("Firestore updated successfully");
-
-                            // 4. UI Update (Ensure final URL is set)
-                            if (profilePhoto) {
-                                profilePhoto.src = url;
-                                profilePhoto.style.display = 'block';
-                            }
-                            if (defaultIcon) defaultIcon.style.display = 'none';
-
-                            alert("Photo uploaded successfully!");
-
-                        } catch (error) {
-                            // 6. Error Handling
-                            console.error("Error in profile photo upload:", error);
-                            alert("Error uploading photo: " + error.message);
-                            
-                            // Revert UI if needed (optional, but good for consistency)
-                            if (data.photoURL) {
-                                profilePhoto.src = data.photoURL;
-                            } else {
-                                profilePhoto.style.display = 'none';
-                                defaultIcon.style.display = 'block';
-                            }
-
-                        } finally {
-                            newUploadBtn.textContent = "Upload / Change Profile Photo";
-                            newUploadBtn.disabled = false;
-                        }
-                    });
-                }
-                
                 // Donation Status Logic
                 updateDonationStatusUI(data);
 

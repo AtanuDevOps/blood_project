@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDashboard = document.getElementById('donorList');
     const isAuthPage = document.getElementById('signupForm'); // Login or Signup page
     const isProfilePage = document.getElementById('userPhone'); // Profile page elements
+    const isRequestsPage = document.getElementById('requestsList'); // Requests page
 
     let currentUser = null;
 
@@ -96,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Modal Logic
         initModal();
+        
     }
 
     function fetchDonors(nameFilter = "", locationFilter = "", bloodFilter = "") {
@@ -320,6 +322,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     callBtn.href = `tel:${data.phone}`;
                     callBtn.classList.remove('hidden');
                     
+                    // Inject Chat button (only after approval)
+                    const actions = modal.querySelector('.action-buttons');
+                    if (actions) {
+                        const existingChatBtn = document.getElementById('chatBtn');
+                        if (existingChatBtn) existingChatBtn.remove();
+                        const chatBtn = document.createElement('button');
+                        chatBtn.id = 'chatBtn';
+                        chatBtn.className = 'btn-view';
+                        chatBtn.innerHTML = '<i class="fa-regular fa-comments"></i> Chat';
+                        chatBtn.addEventListener('click', () => {
+                            openChat(docId, data.id, requesterId);
+                        });
+                        actions.insertBefore(chatBtn, callBtn);
+                    }
+                    
                     statusMsg.textContent = "Request Approved! You can now contact this donor.";
                     statusMsg.classList.add('visible', 'approved');
                 } else if (req.status === 'pending') {
@@ -424,6 +441,234 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // =========================================================================
+    // 6. REQUESTS PAGE LOGIC (requests.html)
+    // =========================================================================
+    if (isRequestsPage) {
+        // Initial Fetch
+        fetchRequests();
+
+        // Filter Listeners
+        const filterBlood = document.getElementById('filterBloodGroup');
+        const filterCity = document.getElementById('filterCity');
+
+        if(filterBlood) filterBlood.addEventListener('change', filterRequests);
+        if(filterCity) filterCity.addEventListener('input', filterRequests);
+
+        // Modal & Form
+        initRequestModal();
+        initCityDropdown();
+    }
+
+    function fetchRequests() {
+        const requestsList = document.getElementById('requestsList');
+        if (!requestsList) return;
+
+        requestsList.innerHTML = '<div class="loading-spinner">Loading requests...</div>';
+
+        const db = firebase.firestore();
+        db.collection("blood_requests")
+            .where("status", "==", "active")
+            .limit(50) 
+            .get()
+            .then((querySnapshot) => {
+                let requests = [];
+                querySnapshot.forEach((doc) => {
+                    requests.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Client-side Sort: Newest first
+                requests.sort((a, b) => {
+                    const timeA = a.createdAt ? (a.createdAt.seconds || a.createdAt) : 0;
+                    const timeB = b.createdAt ? (b.createdAt.seconds || b.createdAt) : 0;
+                    return timeB - timeA;
+                });
+
+                renderRequests(requests);
+            })
+            .catch((error) => {
+                console.error("Error fetching requests: ", error);
+                requestsList.innerHTML = '<div class="loading-spinner">Error loading requests.</div>';
+            });
+    }
+
+    function renderRequests(requests) {
+        const requestsList = document.getElementById('requestsList');
+        if (requests.length === 0) {
+            requestsList.innerHTML = '<div class="loading-spinner">No active blood requests at the moment.</div>';
+            return;
+        }
+
+        let html = "";
+        requests.forEach(req => {
+            html += createRequestCard(req);
+        });
+        requestsList.innerHTML = html;
+    }
+    
+
+    function createRequestCard(req) {
+        
+        // Format Date
+        let timeString = "Just now";
+        if (req.createdAt) {
+            // Handle Firestore Timestamp or Date
+            const date = req.createdAt.toDate ? req.createdAt.toDate() : new Date(req.createdAt);
+            timeString = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        return `
+            <div class="request-card" data-blood="${req.bloodGroup}" data-city="${(req.city || '').toLowerCase()}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="req-blood-badge">${req.bloodGroup}</div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 18px; color: #333;">${escapeHtml(req.patientName)}</h3>
+                            <div style="font-size: 13px; color: #777;">
+                                <i class="fa-regular fa-clock"></i> Posted: ${timeString}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <div style="margin-bottom: 5px; color: #555;">
+                        <i class="fa-solid fa-location-dot" style="color: #CE1126; width: 20px;"></i> 
+                        <strong>${escapeHtml(req.city)}, ${escapeHtml(req.division)}</strong>
+                    </div>
+                    <div style="color: #555; margin-left: 24px; font-size: 14px;">
+                        ${escapeHtml(req.area)}
+                    </div>
+                </div>
+
+                ${req.note ? `<div style="background: #f9f9f9; padding: 10px; border-radius: 8px; font-size: 14px; color: #666; font-style: italic; margin-bottom: 15px;">"${escapeHtml(req.note)}"</div>` : ''}
+
+                <button class="btn-view" style="width: 100%; text-align: center;" onclick="handleHelpClick('${req.userId}', '${escapeHtml(req.patientName)}')">
+                    <i class="fa-solid fa-hand-holding-heart"></i> I Can Help
+                </button>
+            </div>
+        `;
+    }
+
+    function filterRequests() {
+        const bloodVal = document.getElementById('filterBloodGroup').value;
+        const cityVal = document.getElementById('filterCity').value.toLowerCase().trim();
+
+        const cards = document.querySelectorAll('.request-card');
+        
+        cards.forEach(card => {
+            const cardBlood = card.dataset.blood;
+            const cardCity = card.dataset.city;
+
+            const matchBlood = !bloodVal || cardBlood === bloodVal;
+            const matchCity = !cityVal || cardCity.includes(cityVal);
+
+            if (matchBlood && matchCity) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function initRequestModal() {
+        const modal = document.getElementById('requestModal');
+        const btn = document.getElementById('postRequestBtn');
+        const close = modal.querySelector('.close-modal');
+        const form = document.getElementById('requestForm');
+
+        if (!modal || !btn) return;
+
+        btn.addEventListener('click', () => {
+            if (!currentUser) {
+                const proceed = confirm("You must be logged in to post a request. Go to login page?");
+                if (proceed) window.location.href = 'login.html';
+                return;
+            }
+            modal.classList.add('show');
+        });
+
+        close.addEventListener('click', () => modal.classList.remove('show'));
+        window.addEventListener('click', (e) => {
+            if (e.target == modal) modal.classList.remove('show');
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                alert("You must be logged in.");
+                return;
+            }
+
+            const patientName = document.getElementById('reqPatientName').value;
+            const bloodGroup = document.getElementById('reqBloodGroup').value;
+            const division = document.getElementById('reqDivision').value;
+            const city = document.getElementById('reqCity').value;
+            const area = document.getElementById('reqArea').value;
+            const note = document.getElementById('reqNote').value;
+
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = "Posting...";
+
+            const db = firebase.firestore();
+            db.collection("blood_requests").add({
+                userId: currentUser.uid,
+                patientName,
+                bloodGroup,
+                division,
+                city,
+                area,
+                note,
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Request posted successfully!");
+                modal.classList.remove('show');
+                form.reset();
+                fetchRequests(); // Refresh list
+            }).catch((error) => {
+                console.error("Error posting request:", error);
+                alert("Error: " + error.message);
+            }).finally(() => {
+                btn.disabled = false;
+                btn.textContent = "Post Request";
+            });
+        });
+    }
+
+    function initCityDropdown() {
+        const divisionSel = document.getElementById('reqDivision');
+        const citySel = document.getElementById('reqCity');
+        if (!divisionSel || !citySel) return;
+
+        const cities = {
+            'Dhaka': ['Dhaka City', 'Gazipur', 'Narayanganj', 'Tangail', 'Faridpur'],
+            'Chittagong': ['Chittagong City', 'Cox\'s Bazar', 'Comilla', 'Noakhali', 'Feni'],
+            'Rajshahi': ['Rajshahi City', 'Bogra', 'Pabna', 'Sirajganj'],
+            'Khulna': ['Khulna City', 'Jessore', 'Kushtia', 'Satkhira'],
+            'Barisal': ['Barisal City', 'Patuakhali', 'Bhola'],
+            'Sylhet': ['Sylhet City', 'Moulvibazar', 'Habiganj'],
+            'Rangpur': ['Rangpur City', 'Dinajpur', 'Thakurgaon'],
+            'Mymensingh': ['Mymensingh City', 'Jamalpur', 'Netrokona']
+        };
+
+        divisionSel.addEventListener('change', () => {
+            const div = divisionSel.value;
+            citySel.innerHTML = '<option value="">Select City</option>';
+            
+            if (div && cities[div]) {
+                cities[div].forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = city;
+                    opt.textContent = city;
+                    citySel.appendChild(opt);
+                });
+            }
+        });
+    }
+
     function registerUser(name, phone, bloodGroup, location, password) {
         if(!name || !phone || !bloodGroup || !location || !password) {
             alert("Please fill in all fields.");
@@ -498,17 +743,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 const defaultIcon = document.getElementById('defaultAvatarIcon');
                 const uploadBtn = document.getElementById('uploadPhotoBtn');
                 if (uploadBtn) uploadBtn.style.display = 'none';
-                if (profilePhoto) profilePhoto.style.display = 'none';
-                if (defaultIcon) defaultIcon.style.display = 'none';
+                
                 const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
                 const baseText = (data.name || '').trim().charAt(0).toUpperCase();
                 const altText = (data.bloodGroup || '').trim();
                 const avatarText = data.avatarText || (baseText || altText || '?');
                 const avatarColor = data.avatarColor || palette[Math.floor(Math.random() * palette.length)];
-                if (avatarContainer) {
-                    avatarContainer.textContent = avatarText;
-                    avatarContainer.style.backgroundColor = avatarColor;
-                    avatarContainer.style.color = '#ffffff';
+                
+                const photoUrl = data.profilePhotoUrl || data.photoURL || "";
+                if (profilePhoto && photoUrl) {
+                    profilePhoto.src = photoUrl;
+                    profilePhoto.style.display = 'block';
+                    if (defaultIcon) defaultIcon.style.display = 'none';
+                    if (avatarContainer) {
+                        avatarContainer.style.backgroundColor = avatarColor;
+                        avatarContainer.style.color = '#ffffff';
+                        avatarContainer.textContent = '';
+                    }
+                } else {
+                    if (profilePhoto) profilePhoto.style.display = 'none';
+                    if (defaultIcon) defaultIcon.style.display = 'none';
+                    if (avatarContainer) {
+                        avatarContainer.textContent = avatarText;
+                        avatarContainer.style.backgroundColor = avatarColor;
+                        avatarContainer.style.color = '#ffffff';
+                    }
                 }
                 const updates = {};
                 if (!data.avatarText) updates.avatarText = avatarText;
@@ -653,6 +912,9 @@ document.addEventListener('DOMContentLoaded', () => {
                       `;
                       statusBadge = `<span class="status-badge status-pending">PENDING</span>`;
                   } else if (req.status === 'approved') {
+                      actionButtons = `
+                          <button class="btn-view" onclick="openChatFromRequest('${req.id}', '${uid}', '${req.requesterId}')"><i class="fa-regular fa-comments"></i> Chat</button>
+                      `;
                       statusBadge = `<span class="status-badge status-approved">APPROVED</span>`;
                   } else {
                       statusBadge = `<span class="status-badge status-rejected">REJECTED</span>`;
@@ -682,17 +944,185 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Make available globally for onclick handlers
+    window.handleHelpClick = function(requesterId, patientName) {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+             const proceed = confirm("You must be logged in to view contact details. Go to login page?");
+             if (proceed) window.location.href = 'login.html';
+             return;
+        }
+
+        const db = firebase.firestore();
+        db.collection("users").doc(requesterId).get().then((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                const phone = data.phone || "Not available";
+                const name = data.name || "Unknown";
+                
+                alert(`Contact Details for Patient: ${patientName}\n\nPosted by: ${name}\nPhone: ${phone}\n\nPlease contact them directly to offer help.`);
+            } else {
+                alert("Requester details not found.");
+            }
+        }).catch(err => {
+            console.error("Error fetching user:", err);
+            alert("Error fetching contact info.");
+        });
+    }
+
     window.handleRequestAction = function(requestId, action) {
         if(!confirm(`Are you sure you want to ${action} this request?`)) return;
 
-        firebase.firestore().collection('contactRequests').doc(requestId).update({
-            status: action
-        }).catch(err => {
+        const db = firebase.firestore();
+        const reqRef = db.collection('contactRequests').doc(requestId);
+        reqRef.update({ status: action })
+        .then(async () => {
+            if (action === 'approved') {
+                const reqDoc = await reqRef.get();
+                if (reqDoc.exists) {
+                    const req = reqDoc.data();
+                    const chatRef = db.collection('chats').doc(requestId);
+                    const chatDoc = await chatRef.get();
+                    if (!chatDoc.exists) {
+                        await chatRef.set({
+                            donorId: req.donorId,
+                            requesterId: req.requesterId,
+                            requestId: requestId,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+            }
+        })
+        .catch(err => {
             console.error("Error updating request:", err);
             alert("Error: " + err.message);
         });
     }
 
+    // =========================================================================
+    // 8. CHAT UI & LOGIC
+    // =========================================================================
+    let chatUnsub = null;
+    let currentChatId = null;
+    let currentChatParticipants = null;
+
+    function initChatUI() {
+        const chatModal = document.getElementById('chatModal');
+        if (!chatModal) return;
+
+        const closeEl = chatModal.querySelector('.close-modal');
+        closeEl.addEventListener('click', () => closeChat());
+        window.addEventListener('click', (e) => {
+            if (e.target === chatModal) closeChat();
+        });
+
+        const sendBtn = document.getElementById('chatSendBtn');
+        const inputEl = document.getElementById('chatInput');
+        if (sendBtn && inputEl) {
+            sendBtn.addEventListener('click', sendMessage);
+            inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+    }
+
+    function openChat(chatId, donorId, requesterId) {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            alert("You must be logged in to use chat.");
+            return;
+        }
+        if (user.uid !== donorId && user.uid !== requesterId) {
+            alert("You don't have access to this chat.");
+            return;
+        }
+
+        currentChatId = chatId;
+        currentChatParticipants = { donorId, requesterId };
+
+        const chatModal = document.getElementById('chatModal');
+        const titleEl = document.getElementById('chatTitle');
+        const messagesEl = document.getElementById('chatMessages');
+        if (!chatModal || !titleEl || !messagesEl) return;
+
+        titleEl.textContent = "Conversation";
+        messagesEl.innerHTML = '<div class="loading-spinner" style="padding:10px;">Loading conversation...</div>';
+        chatModal.classList.add('show');
+
+        if (chatUnsub) chatUnsub();
+        const db = firebase.firestore();
+        chatUnsub = db.collection('chats').doc(chatId)
+            .collection('messages')
+            .orderBy('createdAt', 'asc')
+            .onSnapshot((snapshot) => {
+                if (snapshot.empty) {
+                    messagesEl.innerHTML = '<div style="text-align:center; color:#888;">Start your conversation</div>';
+                    return;
+                }
+                let html = '';
+                snapshot.forEach(doc => {
+                    const msg = doc.data();
+                    const isMine = msg.senderId === user.uid;
+                    html += `
+                        <div style="text-align:${isMine ? 'right' : 'left'}; margin:6px 0;">
+                            <div style="display:inline-block; background:${isMine ? '#CE1126' : '#f1f1f1'}; color:${isMine ? 'white' : '#333'}; padding:8px 12px; border-radius:12px; max-width:75%; word-wrap:break-word;">
+                                ${escapeHtml(msg.text || '')}
+                            </div>
+                            <div style="font-size:11px; color:#777; margin-top:2px;">
+                                ${msg.createdAt && msg.createdAt.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                messagesEl.innerHTML = html;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }, (error) => {
+                messagesEl.innerHTML = '<div style="color:red;">Error loading messages.</div>';
+                console.error("Chat subscribe error:", error);
+            });
+    }
+
+    function closeChat() {
+        const chatModal = document.getElementById('chatModal');
+        if (chatModal) chatModal.classList.remove('show');
+        if (chatUnsub) chatUnsub();
+        chatUnsub = null;
+        currentChatId = null;
+        currentChatParticipants = null;
+    }
+
+    function sendMessage() {
+        const inputEl = document.getElementById('chatInput');
+        const text = (inputEl && inputEl.value || '').trim();
+        if (!text || !currentChatId || !currentChatParticipants) return;
+
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+
+        if (user.uid !== currentChatParticipants.donorId && user.uid !== currentChatParticipants.requesterId) {
+            alert("You don't have access to this chat.");
+            return;
+        }
+
+        const db = firebase.firestore();
+        db.collection('chats').doc(currentChatId).collection('messages').add({
+            senderId: user.uid,
+            text,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            if (inputEl) inputEl.value = '';
+        }).catch((error) => {
+            console.error("Send message error:", error);
+            alert("Failed to send. Try again.");
+        });
+    }
+
+    window.openChatFromRequest = function(requestId, donorId, requesterId) {
+        openChat(requestId, donorId, requesterId);
+    }
+
+    // Initialize chat UI if present
+    initChatUI();
     // Helper
     function escapeHtml(text) {
         if (!text) return text;

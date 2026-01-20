@@ -1,3 +1,7 @@
+/* =========================================
+   DASHBOARD & GLOBAL STYLES
+   ========================================= */
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -10,9 +14,7 @@ body {
     color: #333;
 }
 
-/* =========================================
-   NAVBAR (Shared)
-   ========================================= */
+/* Navbar */
 .navbar {
     background-color: #CE1126;
     color: white;
@@ -43,8 +45,9 @@ body {
 .logo a {
     color: white;
     text-decoration: none;
-    font-size: 24px;
-    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .user-menu {
@@ -53,17 +56,8 @@ body {
     gap: 15px;
 }
 
-.nav-link {
-    color: white;
-    text-decoration: none;
+#navUserName {
     font-weight: 500;
-    margin: 0;
-    font-size: 14px;
-    transition: opacity 0.3s;
-}
-
-.nav-link:hover {
-    opacity: 0.8;
 }
 
 .btn-logout {
@@ -84,9 +78,7 @@ body {
     background: rgba(255,255,255,0.4);
 }
 
-/* =========================================
-   DASHBOARD / MAIN LAYOUT
-   ========================================= */
+/* Main Container */
 .main-container {
     max-width: 1200px;
     margin: 30px auto;
@@ -175,33 +167,12 @@ body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
     text-align: center;
     transition: transform 0.3s, box-shadow 0.3s;
-    position: relative; /* For badge positioning */
+    position: relative;
 }
 
 .donor-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-}
-
-.card-status-badge {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    font-size: 10px;
-    padding: 4px 8px;
-    border-radius: 10px;
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-.card-status-badge.available {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.card-status-badge.cooldown {
-    background-color: #fff3cd;
-    color: #856404;
 }
 
 .card-avatar {
@@ -261,293 +232,29 @@ body {
     color: white;
 }
 
-/* =========================================
-   LOGIN / SIGNUP / PROFILE LAYOUT
-   ========================================= */
-/* Wrapper for centered pages (Login, Signup, Profile) */
-.auth-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: calc(100vh - 70px); /* Subtract navbar height */
-    padding: 20px;
-}
-
-/* Vestigial auth-card styles (kept for safety, though unused in sliding auth) */
-.auth-card {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
-                0 10px 10px rgba(0,0,0,0.22);
-    width: 400px;
-    max-width: 100%;
-    padding: 40px;
-    text-align: center;
-}
-
-.auth-card h1 {
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: #333;
-}
-
-.auth-card p {
-    font-size: 14px;
-    font-weight: 300;
-    margin-bottom: 30px;
-    color: #666;
-}
-
-.auth-card form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    padding: 0;
-    height: auto;
-    background: transparent;
-}
-
-.auth-card input, .auth-card select {
-    background-color: #eee;
-    border: none;
-    padding: 12px 15px;
-    margin: 0;
-    width: 100%;
-    border-radius: 8px;
-    font-family: 'Poppins', sans-serif;
-    outline: none;
-}
-
-.auth-card button {
-    margin-top: 10px;
-    width: 100%;
-}
-
-.auth-link {
-    margin-top: 20px;
-    font-size: 14px;
-    display: block;
-}
-
-.auth-link a {
+/* Urgent access button (dashboard & profile) */
+#openUrgentBtn,
+.btn-view[href*="#urgent"] {
+    border: 1px solid #CE1126;
     color: #CE1126;
-    font-weight: bold;
-    margin: 0;
-}
-
-/* Profile Specific */
-.profile-header {
-    margin-bottom: 30px;
-}
-
-.profile-avatar {
-    width: 100px;
-    height: 100px;
-    background: #CE1126;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 40px;
-    margin: 0 auto 20px;
-    box-shadow: 0 4px 10px rgba(206, 17, 38, 0.3);
-}
-
-.profile-details {
-    width: 100%;
-    background: #f9f9f9;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.detail-item:last-child {
-    border-bottom: none;
-}
-
-.detail-label {
     font-weight: 600;
-    color: #555;
-    text-align: left;
+    position: relative;
 }
-
-.detail-value {
-    font-weight: 400;
-    color: #333;
-    text-align: right;
-}
-
-/* Global Red Button (Used in Profile and Auth) */
-.btn-red {
-    background-color: #CE1126;
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.3s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+#openUrgentBtn::before,
+.btn-view[href*="#urgent"]::before {
+    content: "\f004";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
     display: inline-block;
+    margin-right: 8px;
+}
+#openUrgentBtn:hover,
+.btn-view[href*="#urgent"]:hover {
+    background: #ffe5e7;
+    border-color: #b71c1c;
 }
 
-.btn-red:hover {
-    background-color: #b71c1c;
-}
-
-/* =========================================
-   CONTACT REQUESTS (New Feature)
-   ========================================= */
-.requests-section {
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto 30px;
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-}
-
-.requests-section h2 {
-    color: #333;
-    font-size: 20px;
-    margin-bottom: 20px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-}
-
-.request-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    transition: transform 0.2s;
-}
-
-.request-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-}
-
-.request-info {
-    text-align: left;
-}
-
-.req-name {
-    font-weight: 600;
-    color: #333;
-    display: block;
-}
-
-.req-date {
-    font-size: 12px;
-    color: #888;
-}
-
-.req-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.btn-accept {
-    background: #4CAF50;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: opacity 0.3s;
-}
-
-.btn-reject {
-    background: #f44336;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: opacity 0.3s;
-}
-
-.btn-accept:hover, .btn-reject:hover {
-    opacity: 0.9;
-}
-
-.status-badge {
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.status-pending {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.status-approved {
-    background: #d4edda;
-    color: #155724;
-}
-
-.status-rejected {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Modal Status Message */
-.status-message-box {
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 14px;
-    display: none;
-}
-
-.status-message-box.visible {
-    display: block;
-}
-
-.status-message-box.pending {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-.status-message-box.rejected {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.status-message-box.approved {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-
-/* =========================================
-   MODAL
-   ========================================= */
+/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -696,14 +403,173 @@ body {
     }
 }
 
+/* Profile page: donation status and contact requests */
+.donation-status-card {
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    text-align: center;
+    margin-bottom: 20px;
+}
+.status-indicator {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 18px;
+    font-weight: 700;
+    font-size: 14px;
+    margin: 10px 0;
+}
+.status-indicator.available {
+    background: #43A047;
+    color: #fff;
+}
+.status-indicator.cooldown {
+    background: #FB8C00;
+    color: #fff;
+}
+.cooldown-info {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+    color: #555;
+    font-size: 14px;
+}
+.cooldown-days {
+    display: block;
+    margin-top: 8px;
+    font-weight: 600;
+    color: #CE1126;
+}
+.btn-donated {
+    border-radius: 25px;
+    border: 1px solid #CE1126;
+    background-color: #CE1126;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 20px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    margin-top: 15px;
+}
+.requests-section {
+    background: #fff;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-top: 20px;
+}
+.request-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 10px;
+    border-bottom: 1px solid #eee;
+}
+.request-item:last-child {
+    border-bottom: none;
+}
+.request-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.req-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+.req-date {
+    color: #777;
+    font-size: 12px;
+}
+.req-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-accept {
+    background: #43A047;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-reject {
+    background: transparent;
+    color: #CE1126;
+    border: 1px solid #CE1126;
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 12px;
+}
+.status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+}
+.status-badge.status-pending {
+    background: #FB8C00;
+}
+.status-badge.status-approved {
+    background: #43A047;
+}
+.status-badge.status-rejected {
+    background: #CE1126;
+}
+.status-message-box {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f9f9f9;
+    color: #555;
+    font-size: 14px;
+    display: none;
+    text-align: left;
+    border-left: 4px solid #ddd;
+}
+.status-message-box.visible {
+    display: block;
+}
+.status-message-box.approved {
+    border-left-color: #43A047;
+    color: #2e7d32;
+}
+.status-message-box.pending {
+    border-left-color: #FB8C00;
+    color: #8a5a00;
+}
+.status-message-box.rejected {
+    border-left-color: #CE1126;
+    color: #b71c1c;
+}
 /* =========================================
-   RESTORED SLIDING AUTH FORM (Scoped to .auth-wrapper)
+   AUTH PAGE STYLES (Login/Signup)
    ========================================= */
-.auth-wrapper .container {
+
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 70px); /* Adjust for navbar */
+    padding: 20px;
+}
+
+.container {
     background-color: #fff;
     border-radius: 10px;
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
-                0 10px 10px rgba(0,0,0,0.22);
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
     position: relative;
     overflow: hidden;
     width: 768px;
@@ -711,31 +577,31 @@ body {
     min-height: 480px;
 }
 
-.auth-wrapper .form-container {
+.form-container {
     position: absolute;
     top: 0;
     height: 100%;
     transition: all 0.6s ease-in-out;
 }
 
-.auth-wrapper .sign-in-container {
+.sign-in-container {
     left: 0;
     width: 50%;
     z-index: 2;
 }
 
-.auth-wrapper .container.right-panel-active .sign-in-container {
-    transform: translateX(100%);
-}
-
-.auth-wrapper .sign-up-container {
+.sign-up-container {
     left: 0;
     width: 50%;
     opacity: 0;
     z-index: 1;
 }
 
-.auth-wrapper .container.right-panel-active .sign-up-container {
+.container.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+}
+
+.container.right-panel-active .sign-up-container {
     transform: translateX(100%);
     opacity: 1;
     z-index: 5;
@@ -743,17 +609,11 @@ body {
 }
 
 @keyframes show {
-    0%, 49.99% {
-        opacity: 0;
-        z-index: 1;
-    }
-    50%, 100% {
-        opacity: 1;
-        z-index: 5;
-    }
+    0%, 49.99% { opacity: 0; z-index: 1; }
+    50%, 100% { opacity: 1; z-index: 5; }
 }
 
-.auth-wrapper .overlay-container {
+.overlay-container {
     position: absolute;
     top: 0;
     left: 50%;
@@ -764,14 +624,14 @@ body {
     z-index: 100;
 }
 
-.auth-wrapper .container.right-panel-active .overlay-container {
+.container.right-panel-active .overlay-container {
     transform: translateX(-100%);
 }
 
-.auth-wrapper .overlay {
-    background: #CE1126;
-    background: -webkit-linear-gradient(to right, #CE1126, #b71c1c);
-    background: linear-gradient(to right, #CE1126, #b71c1c);
+.overlay {
+    background: #FF416C;
+    background: -webkit-linear-gradient(to right, #CE1126, #ff4b2b);
+    background: linear-gradient(to right, #CE1126, #ff4b2b);
     background-repeat: no-repeat;
     background-size: cover;
     background-position: 0 0;
@@ -784,11 +644,11 @@ body {
     transition: transform 0.6s ease-in-out;
 }
 
-.auth-wrapper .container.right-panel-active .overlay {
+.container.right-panel-active .overlay {
     transform: translateX(50%);
 }
 
-.auth-wrapper .overlay-panel {
+.overlay-panel {
     position: absolute;
     display: flex;
     align-items: center;
@@ -803,24 +663,30 @@ body {
     transition: transform 0.6s ease-in-out;
 }
 
-.auth-wrapper .overlay-left {
+.overlay-left {
     transform: translateX(-20%);
 }
 
-.auth-wrapper .container.right-panel-active .overlay-left {
+.container.right-panel-active .overlay-left {
     transform: translateX(0);
 }
 
-.auth-wrapper .overlay-right {
+.overlay-right {
     right: 0;
     transform: translateX(0);
 }
 
-.auth-wrapper .container.right-panel-active .overlay-right {
+.container.right-panel-active .overlay-right {
     transform: translateX(20%);
 }
 
-.auth-wrapper form {
+.social-text {
+    margin: 20px 0;
+    font-size: 14px;
+    color: #888;
+}
+
+form {
     background-color: #FFFFFF;
     display: flex;
     align-items: center;
@@ -831,17 +697,17 @@ body {
     text-align: center;
 }
 
-.auth-wrapper input, .auth-wrapper select {
+input, select {
     background-color: #eee;
     border: none;
     padding: 12px 15px;
     margin: 8px 0;
     width: 100%;
     border-radius: 5px;
-    outline: none;
+    font-family: 'Poppins', sans-serif;
 }
 
-.auth-wrapper button {
+.btn-red {
     border-radius: 20px;
     border: 1px solid #CE1126;
     background-color: #CE1126;
@@ -853,161 +719,261 @@ body {
     text-transform: uppercase;
     transition: transform 80ms ease-in;
     cursor: pointer;
-    margin-top: 10px;
-    width: auto;
+    margin-top: 20px;
 }
 
-.auth-wrapper button:active {
+.btn-red:active {
     transform: scale(0.95);
 }
 
-.auth-wrapper button.ghost {
+.btn-red:focus {
+    outline: none;
+}
+
+.ghost {
     background-color: transparent;
     border-color: #FFFFFF;
+    border-radius: 20px;
+    border: 1px solid #FFFFFF;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 12px 45px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 20px;
 }
 
-.auth-wrapper .mobile-toggle-text {
+.mobile-toggle-text {
     display: none;
+    margin-top: 15px;
+    font-size: 14px;
 }
 
-/* Mobile Responsive for Auth */
-@media (max-width: 768px) {
-    .auth-wrapper .container {
-        width: 100%;
-        min-height: 600px;
-        overflow: visible; 
-    }
+.mobile-toggle-text a {
+    color: #CE1126;
+    font-weight: bold;
+    text-decoration: none;
+}
 
-    .auth-wrapper .overlay-container {
+@media (max-width: 768px) {
+    .container {
+        min-height: 800px;
+        flex-direction: column;
+        height: auto;
+    }
+    .form-container {
+        position: static;
+        width: 100%;
+        height: auto;
+        padding: 20px;
+        opacity: 1;
+        transform: none !important;
+    }
+    .sign-in-container {
+        display: block;
+    }
+    .sign-up-container {
         display: none;
     }
-    
-    .auth-wrapper .form-container {
-        width: 100%;
-        position: absolute;
-        height: auto;
-        top: 0;
-        left: 0;
-        transition: opacity 0.3s;
-        background: white;
-        padding: 30px 0;
-        box-shadow: none;
+    .container.right-panel-active .sign-in-container {
+        display: none;
     }
-
-    .auth-wrapper .sign-in-container {
-        z-index: 2;
-        opacity: 1;
-    }
-    
-    .auth-wrapper .sign-up-container {
-        z-index: 1;
-        opacity: 0;
-    }
-
-    .auth-wrapper .container.right-panel-active .sign-in-container {
-        transform: none;
-        opacity: 0;
-        z-index: 1;
-    }
-    
-    .auth-wrapper .container.right-panel-active .sign-up-container {
-        transform: none;
-        opacity: 1;
-        z-index: 2;
+    .container.right-panel-active .sign-up-container {
+        display: block;
         animation: none;
     }
-    
-    .auth-wrapper form {
-        padding: 0 20px;
+    .overlay-container {
+        display: none;
     }
-
-    .auth-wrapper .mobile-toggle-text {
+    .mobile-toggle-text {
         display: block;
-        margin-top: 20px;
-        font-size: 14px;
-    }
-    
-    .auth-wrapper .mobile-toggle-text a {
-        color: #CE1126;
-        font-weight: bold;
-        text-decoration: none;
     }
 }
 
 /* =========================================
-   DONATION COOLDOWN STATUS
+   REQUESTS PAGE STYLES
    ========================================= */
-.donation-status-card {
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-content h1 {
+    font-size: 28px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.header-content p {
+    color: #666;
+}
+
+/* Request Card */
+.request-card {
     background: white;
     border-radius: 15px;
     padding: 25px;
-    margin-bottom: 30px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    text-align: center;
-    border: 1px solid #eee;
+    text-align: left;
+    transition: transform 0.3s, box-shadow 0.3s;
+    position: relative;
+    border-left: 5px solid #ddd;
 }
 
-.donation-status-card h3 {
-    color: #333;
+.request-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.request-card.urgent {
+    border-left-color: #CE1126;
+    background: #fff5f5;
+}
+
+.req-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     margin-bottom: 15px;
 }
 
-.status-indicator {
-    display: inline-block;
-    padding: 8px 20px;
-    border-radius: 30px;
-    font-weight: 700;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-.status-indicator.available {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.status-indicator.cooldown {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-.cooldown-info {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.cooldown-days {
-    font-size: 24px;
-    font-weight: bold;
-    color: #CE1126;
-    display: block;
-    margin-top: 5px;
-}
-
-.btn-donated {
-    background-color: #CE1126;
+.req-blood-badge {
+    background: #CE1126;
     color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 30px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    box-shadow: 0 4px 10px rgba(206, 17, 38, 0.2);
+}
+
+.req-urgency-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+.req-urgency-badge.urgent {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.req-urgency-badge.normal {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+
+.req-body h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.req-details {
+    margin-bottom: 15px;
+}
+
+.req-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #555;
+    margin-bottom: 8px;
     font-size: 14px;
-    box-shadow: 0 4px 6px rgba(206, 17, 38, 0.2);
 }
 
-.btn-donated:hover {
-    background-color: #b71c1c;
-    transform: translateY(-2px);
+.req-row i {
+    color: #CE1126;
+    width: 20px;
+    text-align: center;
 }
 
-.btn-donated:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+.req-note {
+    font-size: 13px;
+    color: #666;
+    background: rgba(0,0,0,0.03);
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.req-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding-top: 15px;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Modal Form Styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.form-group input, 
+.form-group select, 
+.form-group textarea {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus, 
+.form-group select:focus, 
+.form-group textarea:focus {
+    border-color: #CE1126;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-group.half {
+    flex: 1;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .header-content h1 {
+        font-size: 24px;
+    }
+    #postRequestBtn {
+        width: 100%;
+        text-align: center;
+    }
 }

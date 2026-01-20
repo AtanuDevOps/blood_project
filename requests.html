@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BloodConnect - Live Blood Requests</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- FIREBASE CDN SCRIPTS -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html" style="text-decoration: none; color: #CE1126; font-weight: 700; font-size: 24px;"><i class="fa-solid fa-droplet"></i> BloodConnect</a>
+            </div>
+            <a href="requests.html" class="nav-link" style="margin-left: 20px; margin-right: auto; color: #CE1126; font-weight: 500; text-decoration: none; border-bottom: 2px solid #CE1126;">
+                <i class="fa-solid fa-heart-pulse"></i> Blood Requests
+            </a>
+            <div class="user-menu">
+                <!-- Injected via app.js -->
+                <span id="navUserName">Loading...</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        
+        <!-- Header & Actions -->
+        <div class="page-header">
+            <div class="header-content">
+                <h1>Blood Requests</h1>
+                <p>Blood requests from the community. Help save a life today.</p>
+            </div>
+            <button id="postRequestBtn" class="btn-red">
+                <i class="fa-solid fa-plus"></i> Post Blood Request
+            </button>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="search-section">
+            <div class="search-bar">
+                <div class="input-group">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                    <select id="filterBloodGroup">
+                        <option value="">All Blood Groups</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <input type="text" id="filterCity" placeholder="Filter by City">
+                </div>
+            </div>
+        </div>
+
+        <!-- Requests Grid -->
+        <div class="donor-results">
+            <div id="requestsList" class="donor-grid">
+                <div class="loading-spinner">Loading requests...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Post Request Modal -->
+    <div id="requestModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: left;">
+            <span class="close-modal">&times;</span>
+            <div class="modal-header" style="text-align: center;">
+                <h2>Request Blood</h2>
+                <p>Fill out the details below to post a request.</p>
+            </div>
+            <form id="requestForm">
+                <div class="form-group">
+                    <label>Patient Name</label>
+                    <input type="text" id="reqPatientName" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label>Blood Group</label>
+                        <select id="reqBloodGroup" required>
+                            <option value="">Select</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Division</label>
+                    <select id="reqDivision" required>
+                        <option value="">Select Division</option>
+                        <option value="Dhaka">Dhaka</option>
+                        <option value="Chittagong">Chittagong</option>
+                        <option value="Rajshahi">Rajshahi</option>
+                        <option value="Khulna">Khulna</option>
+                        <option value="Barisal">Barisal</option>
+                        <option value="Sylhet">Sylhet</option>
+                        <option value="Rangpur">Rangpur</option>
+                        <option value="Mymensingh">Mymensingh</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>City</label>
+                    <select id="reqCity" required>
+                        <option value="">Select City</option>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Area / Hospital</label>
+                    <input type="text" id="reqArea" placeholder="e.g. DMC Hospital, Ward 5" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Note (Optional)</label>
+                    <textarea id="reqNote" rows="3" placeholder="Any specific instructions..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-red" style="width: 100%;">Post Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Load Config FIRST, then App Logic -->
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

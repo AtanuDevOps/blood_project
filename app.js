@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         chatBtn.className = 'btn-view';
                         chatBtn.innerHTML = '<i class="fa-regular fa-comments"></i> Chat';
                         chatBtn.addEventListener('click', () => {
-                            openChat(docId, data.id, requesterId);
+                            openChat(docId, data.id, requesterId, data.name);
                         });
                         actions.insertBefore(chatBtn, callBtn);
                     }
@@ -574,10 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function initRequestModal() {
         const modal = document.getElementById('requestModal');
         const btn = document.getElementById('postRequestBtn');
-        const close = modal.querySelector('.close-modal');
         const form = document.getElementById('requestForm');
 
-        if (!modal || !btn) return;
+        if (!modal || !btn || !form) return;
+        const close = modal.querySelector('.close-modal');
+        if (!close) return;
 
         btn.addEventListener('click', () => {
             if (!currentUser) {
@@ -1026,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function openChat(chatId, donorId, requesterId) {
+    function openChat(chatId, donorId, requesterId, donorName) {
         const user = firebase.auth().currentUser;
         if (!user) {
             alert("You must be logged in to use chat.");
@@ -1045,7 +1046,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const messagesEl = document.getElementById('chatMessages');
         if (!chatModal || !titleEl || !messagesEl) return;
 
-        titleEl.textContent = "Conversation";
+        titleEl.textContent = donorName ? escapeHtml(donorName) : "Conversation";
+        if (!donorName) {
+            const db = firebase.firestore();
+            db.collection('users').doc(donorId).get().then((doc) => {
+                if (doc.exists) {
+                    const nm = doc.data().name || "Conversation";
+                    titleEl.textContent = escapeHtml(nm);
+                }
+            });
+        }
         messagesEl.innerHTML = '<div class="loading-spinner" style="padding:10px;">Loading conversation...</div>';
         chatModal.classList.add('show');
 
@@ -1118,7 +1128,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.openChatFromRequest = function(requestId, donorId, requesterId) {
-        openChat(requestId, donorId, requesterId);
+        openChat(requestId, donorId, requesterId, null);
     }
 
     // Initialize chat UI if present

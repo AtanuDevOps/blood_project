@@ -1082,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const db = firebase.firestore();
+        let initialized = false;
         db.collection('notifications')
           .where('toUserId', '==', userId)
           .orderBy('createdAt', 'desc')
@@ -1108,6 +1109,26 @@ document.addEventListener('DOMContentLoaded', () => {
               } else {
                   countEl.style.display = 'none';
               }
+              // Slide-in toast notifications for new items (skip initial load)
+              const changes = snapshot.docChanges();
+              if (!initialized) {
+                  initialized = true;
+              } else {
+                  changes.forEach(change => {
+                      if (change.type === 'added') {
+                          const n = change.doc.data();
+                          const title = n.type === 'message' ? 'New message' :
+                                        n.type === 'accept'  ? 'Request approved' :
+                                        n.type === 'reject'  ? 'Request rejected' :
+                                        'New request';
+                          const msg = n.text || '';
+                          const link = n.link || '';
+                          showNotification(title, msg, () => {
+                              onNotificationClick(change.doc.id, link);
+                          });
+                      }
+                  });
+              }
           });
     }
 
@@ -1118,6 +1139,59 @@ document.addEventListener('DOMContentLoaded', () => {
         db.collection('notifications').doc(id).update({ read: true }).then(() => {
             if (link) window.location.href = link;
         });
+    }
+    // In-app notification toast with sound
+    function showNotification(title, message, onClick) {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'notification-toast';
+        toast.innerHTML = `
+            <div>
+                <div class="title">${escapeHtml(title || '')}</div>
+                <div class="message">${escapeHtml(message || '')}</div>
+            </div>
+            <div class="close">&times;</div>
+        `;
+        const closeEl = toast.querySelector('.close');
+        closeEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dismissToast(toast);
+        });
+        toast.addEventListener('click', () => {
+            try { if (typeof onClick === 'function') onClick(); } catch (e) {}
+            dismissToast(toast);
+        });
+        container.appendChild(toast);
+        playNotificationSound();
+        const timeout = setTimeout(() => dismissToast(toast), 5000);
+        toast._timeout = timeout;
+    }
+    function dismissToast(el) {
+        if (!el) return;
+        try { if (el._timeout) clearTimeout(el._timeout); } catch (e) {}
+        el.style.animation = 'fadeOut 0.2s ease-out forwards';
+        setTimeout(() => {
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+        }, 200);
+    }
+    function playNotificationSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = 880;
+            g.gain.setValueAtTime(0.001, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + 0.16);
+        } catch (e) {
+            // Fail silently
+        }
     }
     function openChat(chatId, donorId, requesterId, donorName) {
         const user = firebase.auth().currentUser;

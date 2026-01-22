@@ -56,11 +56,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const name = doc.exists ? doc.data().name : "User";
                 navUserMenu.innerHTML = `
                     <span id="navUserName" style="margin-right: 10px; font-weight: 500;">Hello, ${escapeHtml(name)}</span>
+                    <div id="notifContainer" style="position: relative; display: inline-block; margin-right: 8px;">
+                        <button id="notifBell" class="btn-logout" title="Notifications" style="position: relative;">
+                            <i class="fa-regular fa-bell"></i>
+                            <span id="notifCount" style="position: absolute; top: -6px; right: -6px; background: #CE1126; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; display: none;"></span>
+                        </button>
+                        <div id="notifDropdown" style="display: none; position: absolute; right: 0; top: 30px; background: white; border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 8px; width: 260px; z-index: 999;">
+                            <div style="padding: 8px 12px; font-weight: 600; border-bottom: 1px solid #f0f0f0;">Notifications</div>
+                            <div id="notifList" style="max-height: 300px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
                     <a href="profile.html" class="btn-view" style="padding: 5px 15px; margin-right: 5px; font-size: 12px;">Profile</a>
                     <button id="logoutBtn" class="btn-logout" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
                 `;
                 // Re-attach logout listener since we replaced innerHTML
                 document.getElementById('logoutBtn').addEventListener('click', logout);
+                initNotifications(user.uid);
             });
         } else {
             // User Guest
@@ -379,10 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 requesterName: requesterName,
                 status: 'pending',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
+            }).then(async () => {
                 requestContactBtn.classList.add('hidden');
                 statusMsg.textContent = "Request sent. Waiting for approval.";
                 statusMsg.classList.add('visible', 'pending');
+                await db.collection('notifications').add({
+                    toUserId: data.id,
+                    fromUserId: requesterId,
+                    type: 'request',
+                    text: `Contact request from ${requesterName}`,
+                    read: false,
+                    link: 'profile.html',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
             }).catch((error) => {
                 console.error("Error sending request:", error);
                 alert("Failed to send request. Please try again.");
@@ -991,6 +1011,29 @@ document.addEventListener('DOMContentLoaded', () => {
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
                     }
+                    await db.collection('notifications').add({
+                        toUserId: req.requesterId,
+                        fromUserId: req.donorId,
+                        type: 'accept',
+                        text: 'Your contact request was approved',
+                        read: false,
+                        link: 'index.html',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } else if (action === 'rejected') {
+                const reqDoc = await reqRef.get();
+                if (reqDoc.exists) {
+                    const req = reqDoc.data();
+                    await db.collection('notifications').add({
+                        toUserId: req.requesterId,
+                        fromUserId: req.donorId,
+                        type: 'reject',
+                        text: 'Your contact request was rejected',
+                        read: false,
+                        link: 'index.html',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 }
             }
         })
@@ -1027,6 +1070,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function initNotifications(userId) {
+        const bell = document.getElementById('notifBell');
+        const countEl = document.getElementById('notifCount');
+        const dropdown = document.getElementById('notifDropdown');
+        const listEl = document.getElementById('notifList');
+        if (!bell || !countEl || !dropdown || !listEl) return;
+
+        bell.addEventListener('click', () => {
+            dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+        });
+
+        const db = firebase.firestore();
+        db.collection('notifications')
+          .where('toUserId', '==', userId)
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .onSnapshot((snapshot) => {
+              let unread = 0;
+              let html = '';
+              snapshot.forEach(doc => {
+                  const n = doc.data();
+                  if (n.read === false) unread++;
+                  const time = n.createdAt && n.createdAt.toDate ? n.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                  html += `
+                      <div style="padding: 10px 12px; border-bottom: 1px solid #f5f5f5; cursor: pointer; ${n.read ? '' : 'background:#fff8f8;'}"
+                           onclick="onNotificationClick('${doc.id}', '${n.link || ''}')">
+                          <div style="font-size: 13px; color: #333;">${escapeHtml(n.text || '')}</div>
+                          <div style="font-size: 11px; color: #888;">${time}</div>
+                      </div>
+                  `;
+              });
+              listEl.innerHTML = html || '<div style="padding:12px; color:#888;">No notifications</div>';
+              if (unread > 0) {
+                  countEl.textContent = unread;
+                  countEl.style.display = 'inline';
+              } else {
+                  countEl.style.display = 'none';
+              }
+          });
+    }
+
+    window.onNotificationClick = function(id, link) {
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+        const db = firebase.firestore();
+        db.collection('notifications').doc(id).update({ read: true }).then(() => {
+            if (link) window.location.href = link;
+        });
+    }
     function openChat(chatId, donorId, requesterId, donorName) {
         const user = firebase.auth().currentUser;
         if (!user) {
@@ -1119,8 +1211,18 @@ document.addEventListener('DOMContentLoaded', () => {
             senderId: user.uid,
             text,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(() => {
+        }).then(async () => {
             if (inputEl) inputEl.value = '';
+            const otherUserId = user.uid === currentChatParticipants.donorId ? currentChatParticipants.requesterId : currentChatParticipants.donorId;
+            await db.collection('notifications').add({
+                toUserId: otherUserId,
+                fromUserId: user.uid,
+                type: 'message',
+                text: text,
+                read: false,
+                link: 'index.html',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
         }).catch((error) => {
             console.error("Send message error:", error);
             alert("Failed to send. Try again.");

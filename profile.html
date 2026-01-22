@@ -149,6 +149,19 @@
                 <button id="donatedTodayBtn" class="btn-donated">I Donated Blood Today</button>
             </div>
 
+            <!-- Profile Lock Toggle (Minimal UI addition) -->
+            <div style="width: 100%; max-width: 400px; text-align: left; margin-bottom: 15px;">
+                <label class="profile-action-btn lock-state-btn unlocked" style="font-size: 14px; color: #333;">
+                    <input type="checkbox" id="lockProfileToggle" style="margin-right: 8px;">
+                    <span id="lockStateLabel">🔓 Profile Unlocked</span>
+                </label>
+            </div>
+            
+            <!-- Edit Profile Button -->
+            <div style="width: 100%; max-width: 400px; text-align: left; margin-bottom: 15px;">
+                <button id="editProfileBtn" class="btn-view profile-action-btn" style="font-size: 12px;">✏️ Edit Profile</button>
+            </div>
+
             <!-- Contact Requests Section -->
             <div id="contactRequestsSection" class="requests-section" style="display: none; width: 100%; max-width: 400px;">
                 <h2>Contact Requests</h2>
@@ -158,6 +171,59 @@
             </div>
 
             <button class="btn-red" id="logoutBtn">LOG OUT</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: left;">
+            <span class="close-modal">&times;</span>
+            <div class="modal-header" style="text-align: center;">
+                <h2>Edit Profile</h2>
+            </div>
+            <form id="editProfileForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="editName" placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="editLocation" placeholder="City or Area">
+                </div>
+                <div class="form-group">
+                    <label>Blood Group</label>
+                    <select id="editBloodGroup">
+                        <option value="">Select</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Profile Icon</label>
+                    <select id="editAvatarIcon">
+                        <option value="">Default</option>
+                        <option value="user">User</option>
+                        <option value="droplet">Droplet</option>
+                        <option value="heart">Heart</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Availability Status</label>
+                    <select id="editStatus">
+                        <option value="">No change</option>
+                        <option value="available">Available</option>
+                        <option value="cooldown">Cooldown</option>
+                    </select>
+                </div>
+                <div id="editProfileStatus" class="status-message-box" style="display:none;"></div>
+                <button type="submit" class="btn-red" style="width: 100%;">Save Changes</button>
+            </form>
         </div>
     </div>
 

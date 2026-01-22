@@ -606,6 +606,41 @@ body {
     border-left-color: #CE1126;
     color: #b71c1c;
 }
+
+/* =========================================
+   Profile Action Buttons (Edit & Lock state)
+   Minimal visual enhancements
+   ========================================= */
+.profile-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 18px;
+    transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.btn-view.profile-action-btn {
+    padding: 10px 18px;
+}
+.profile-action-btn:hover {
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+.lock-state-btn {
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+}
+.lock-state-btn.locked {
+    background: rgba(251, 140, 0, 0.10);
+    border-color: #FB8C00;
+    color: #8a5a00;
+}
+.lock-state-btn.unlocked {
+    background: rgba(67, 160, 71, 0.12);
+    border-color: #43A047;
+    color: #2e7d32;
+}
 /* =========================================
    AUTH PAGE STYLES (Login/Signup)
    ========================================= */

@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = donor.name || "Unknown Name";
         const blood = donor.bloodGroup || "?";
         const location = donor.location || "Unknown Location";
+        const profileLocked = !!donor.profileLocked;
         const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
         const baseText = (name || '').trim().charAt(0).toUpperCase();
         const altText = (blood || '').trim();
@@ -207,6 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     data-location="${escapeHtml(location)}"
                     data-phone="${escapeHtml(phone)}"
                     data-cooldown="${isCooldown}"
+                    data-locked="${profileLocked}"
                     data-daystext="${daysText}">
                     View Profile
                 </button>
@@ -265,7 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal) return;
 
         // Fill Data
-        modalName.textContent = data.name;
+        const isLocked = data.locked === "true";
+        modalName.textContent = data.name + (isLocked ? ' 🔒' : ' 🔓');
         modalBlood.textContent = data.blood;
         modalLocation.textContent = data.location;
         
@@ -306,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         requestContactBtn.classList.remove('hidden');
         requestContactBtn.disabled = false;
-        requestContactBtn.textContent = "Request Contact";
+        requestContactBtn.textContent = isLocked ? "Request to Unlock Profile" : "Request Contact";
 
         // Check Request Status
         const requesterId = getOrSetRequesterId();
@@ -316,6 +319,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show loading state on button
         requestContactBtn.textContent = "Checking...";
         requestContactBtn.disabled = true;
+
+        // If profile is UNLOCKED: show phone & chat immediately, hide request button
+        if (!isLocked) {
+            const phoneText = data.phone || "Not available";
+            modalPhone.textContent = phoneText;
+            modalPhone.classList.add('revealed');
+            modalPhone.style.color = "#333";
+            modalPhone.style.fontStyle = "normal";
+            modalPhone.style.fontWeight = "bold";
+            requestContactBtn.classList.add('hidden');
+            callBtn.href = phoneText ? `tel:${phoneText}` : '#';
+            callBtn.classList.remove('hidden');
+            const actions = modal.querySelector('.action-buttons');
+            const requesterIdImmediate = requesterId;
+            const docIdImmediate = `${data.id}_${requesterIdImmediate}`;
+            if (actions) {
+                const existingChatBtn = document.getElementById('chatBtn');
+                if (existingChatBtn) existingChatBtn.remove();
+                const chatBtn = document.createElement('button');
+                chatBtn.id = 'chatBtn';
+                chatBtn.className = 'btn-view';
+                chatBtn.innerHTML = '<i class="fa-regular fa-comments"></i> Chat';
+                chatBtn.addEventListener('click', () => {
+                    openChat(docIdImmediate, data.id, requesterIdImmediate, data.name);
+                });
+                actions.insertBefore(chatBtn, callBtn);
+            }
+            statusMsg.textContent = "Profile unlocked. You can contact directly.";
+            statusMsg.classList.add('visible', 'approved');
+        }
 
         db.collection('contactRequests').doc(docId).get().then((doc) => {
             if (doc.exists) {
@@ -782,13 +815,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         avatarContainer.textContent = '';
                     }
                 } else {
-                    if (profilePhoto) profilePhoto.style.display = 'none';
-                    if (defaultIcon) defaultIcon.style.display = 'none';
-                    if (avatarContainer) {
-                        avatarContainer.textContent = avatarText;
-                        avatarContainer.style.backgroundColor = avatarColor;
-                        avatarContainer.style.color = '#ffffff';
-                    }
+            if (profilePhoto) profilePhoto.style.display = 'none';
+            // Show selected icon if available, else show avatarText
+            const icon = data.avatarIcon || '';
+            if (defaultIcon && icon) {
+                defaultIcon.className = `fa-solid fa-${icon}`;
+                defaultIcon.style.display = 'block';
+                if (avatarContainer) avatarContainer.textContent = '';
+            } else {
+                if (defaultIcon) defaultIcon.style.display = 'none';
+                if (avatarContainer) {
+                    avatarContainer.textContent = avatarText;
+                    avatarContainer.style.backgroundColor = avatarColor;
+                    avatarContainer.style.color = '#ffffff';
+                }
+            }
                 }
                 const updates = {};
                 if (!data.avatarText) updates.avatarText = avatarText;
@@ -796,6 +837,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Object.keys(updates).length > 0) {
                     db.collection("users").doc(uid).set(updates, { merge: true });
                     db.collection("donors").doc(uid).set(updates, { merge: true });
+                }
+                
+                // Profile Lock Toggle
+                const lockToggle = document.getElementById('lockProfileToggle');
+                if (lockToggle) {
+                    lockToggle.checked = !!data.profileLocked;
+                    const lockLabel = lockToggle.closest('label');
+                    const stateEl = document.getElementById('lockStateLabel');
+                    if (lockLabel) {
+                        lockLabel.classList.add('profile-action-btn','lock-state-btn');
+                        lockLabel.classList.toggle('locked', !!data.profileLocked);
+                        lockLabel.classList.toggle('unlocked', !data.profileLocked);
+                    }
+                    if (stateEl) {
+                        stateEl.textContent = data.profileLocked ? '🔒 Profile Locked' : '🔓 Profile Unlocked';
+                    }
+                    // Remove old listeners by cloning
+                    const newToggle = lockToggle.cloneNode(true);
+                    lockToggle.parentNode.replaceChild(newToggle, lockToggle);
+                    newToggle.checked = !!data.profileLocked;
+                    newToggle.addEventListener('change', () => {
+                        const val = !!newToggle.checked;
+                        const ll = newToggle.closest('label');
+                        const se = document.getElementById('lockStateLabel');
+                        if (ll) {
+                            ll.classList.toggle('locked', val);
+                            ll.classList.toggle('unlocked', !val);
+                        }
+                        if (se) {
+                            se.textContent = val ? '🔒 Profile Locked' : '🔓 Profile Unlocked';
+                        }
+                        firebase.firestore().collection("users").doc(uid).set({
+                            profileLocked: val
+                        }, { merge: true }).catch(err => console.error("Error updating profile lock:", err));
+                    });
                 }
                 // Donation Status Logic
                 updateDonationStatusUI(data);
@@ -827,6 +903,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(profileLogoutBtn) {
             profileLogoutBtn.addEventListener('click', logout);
         }
+
+        // Edit Profile Modal setup
+        initEditProfileModal();
     }
 
     function updateDonationStatusUI(data) {
@@ -874,6 +953,89 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
+    }
+
+    function initEditProfileModal() {
+        const btn = document.getElementById('editProfileBtn');
+        const modal = document.getElementById('editProfileModal');
+        const form = document.getElementById('editProfileForm');
+        const statusBox = document.getElementById('editProfileStatus');
+        if (!btn || !modal || !form) return;
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        const closeEl = modal.querySelector('.close-modal');
+        if (closeEl) {
+            const newClose = closeEl.cloneNode(true);
+            closeEl.parentNode.replaceChild(newClose, closeEl);
+            newClose.addEventListener('click', function() {
+                modal.classList.remove('show');
+            });
+        }
+        newBtn.addEventListener('click', function() {
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            const db = firebase.firestore();
+            db.collection("users").doc(user.uid).get().then(function(doc) {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const nameInput = document.getElementById('editName');
+                    const locationInput = document.getElementById('editLocation');
+                    const bloodInput = document.getElementById('editBloodGroup');
+                    const iconInput = document.getElementById('editAvatarIcon');
+                    const statusInput = document.getElementById('editStatus');
+                    if (nameInput) nameInput.value = data.name || '';
+                    if (locationInput) locationInput.value = data.location || '';
+                    if (bloodInput) bloodInput.value = data.bloodGroup || '';
+                    if (iconInput) iconInput.value = data.avatarIcon || '';
+                    if (statusInput) statusInput.value = data.status || '';
+                }
+                modal.classList.add('show');
+            }).catch(function() {
+                modal.classList.add('show');
+            });
+        });
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            const nameEl = document.getElementById('editName');
+            const locationEl = document.getElementById('editLocation');
+            const bloodEl = document.getElementById('editBloodGroup');
+            const iconEl = document.getElementById('editAvatarIcon');
+            const statusEl = document.getElementById('editStatus');
+            const updates = {};
+            const nameVal = nameEl ? nameEl.value.trim() : "";
+            const locationVal = locationEl ? locationEl.value.trim() : "";
+            const bloodVal = bloodEl ? bloodEl.value : "";
+            const iconVal = iconEl ? iconEl.value : "";
+            const statusVal = statusEl ? statusEl.value : "";
+            if (nameVal) updates.name = nameVal;
+            if (locationVal) updates.location = locationVal;
+            if (bloodVal) updates.bloodGroup = bloodVal;
+            if (iconVal) updates.avatarIcon = iconVal;
+            if (statusVal) updates.status = statusVal;
+            const db = firebase.firestore();
+            db.collection("users").doc(user.uid).set(updates, { merge: true }).then(function() {
+                return db.collection("donors").doc(user.uid).set(updates, { merge: true });
+            }).then(function() {
+                if (statusBox) {
+                    statusBox.textContent = "Profile updated successfully!";
+                    statusBox.style.display = "block";
+                    setTimeout(function() {
+                        statusBox.style.display = "none";
+                    }, 3000);
+                }
+                loadProfileData(user.uid);
+                modal.classList.remove('show');
+            }).catch(function() {
+                if (statusBox) {
+                    statusBox.textContent = "Error updating profile";
+                    statusBox.style.display = "block";
+                }
+            });
+        });
     }
 
     function registerDonation(uid) {

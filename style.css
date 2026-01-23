@@ -608,6 +608,71 @@ body {
 }
 
 /* =========================================
+   Profile Mobile Polish (top + basic info)
+   Minimal, mobile-only visual enhancements
+   ========================================= */
+@media (max-width: 768px) {
+    .profile-card { padding: 24px !important; text-align: center !important; }
+    .profile-card .profile-header { margin-bottom: 18px !important; }
+    .profile-card .profile-avatar {
+        width: 110px !important;
+        height: 110px !important;
+        border-radius: 50% !important;
+        border: 3px solid #fff !important;
+        box-shadow: 0 0 0 3px #CE1126, 0 6px 16px rgba(0,0,0,0.08) !important;
+        margin: 0 auto 14px !important;
+    }
+    .profile-card #userName {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        color: #333 !important;
+    }
+    .profile-card .profile-header p {
+        margin-top: 6px !important;
+        font-size: 14px !important;
+        color: #777 !important;
+    }
+    .profile-card .profile-details {
+        background: #fff !important;
+        border-radius: 20px !important;
+        padding: 10px 16px !important;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.06) !important;
+        margin-bottom: 18px !important;
+        max-width: 400px !important;
+        width: 100% !important;
+    }
+    .profile-card .detail-item { padding: 12px 0 !important; border-bottom: 1px solid #eee !important; }
+    .profile-card .detail-item:last-child { border-bottom: none !important; }
+    .profile-card .detail-label { font-weight: 600 !important; color: #555 !important; font-size: 14px !important; }
+    .profile-card .detail-value { font-weight: 500 !important; color: #333 !important; font-size: 14px !important; }
+    .profile-card .blood-group-badge {
+        background: #CE1126 !important;
+        color: #fff !important;
+        padding: 5px 12px !important;
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+        display: inline-block !important;
+    }
+    .profile-card .donation-status-card {
+        background: #fff !important;
+        border-radius: 20px !important;
+        padding: 20px !important;
+        box-shadow: 0 12px 24px rgba(0,0,0,0.06) !important;
+        margin-top: 14px !important;
+        text-align: center !important;
+        max-width: 400px !important;
+        width: 100% !important;
+    }
+    .profile-card .donation-status-card h3 {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #333 !important;
+        margin-bottom: 8px !important;
+    }
+    .profile-card .status-indicator { margin: 12px auto !important; }
+}
+/* =========================================
    Profile Action Buttons (Edit & Lock state)
    Minimal visual enhancements
    ========================================= */

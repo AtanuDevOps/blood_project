@@ -24,7 +24,7 @@
             <div class="logo">
                 <i class="fa-solid fa-droplet"></i> BloodConnect
             </div>
-            <a href="requests.html" class="nav-link" style="margin-left: 20px; margin-right: auto; color: #CE1126; font-weight: 500; text-decoration: none; visibility: hidden;">
+            <a href="requests.html" class="nav-link" style="margin-left: 20px; margin-right: auto; color: #CE1126; font-weight: 500; text-decoration: none;">
                 <i class="fa-solid fa-heart-pulse"></i> Blood Requests
             </a>
             <div class="user-menu">
@@ -37,6 +37,22 @@
     <!-- Main Content -->
     <div class="main-container">
         
+        <div id="foundationDashboard" style="display:none;">
+            <div class="foundation-info-card">
+                <div class="foundation-card-header">
+                    <div class="foundation-title">
+                        <i class="fa-solid fa-building" aria-hidden="true"></i>
+                        <span id="foundationNameCard">Foundation Name</span>
+                    </div>
+                    <span class="foundation-status-badge">Approved</span>
+                </div>
+                <div class="foundation-card-body">
+                    <div class="foundation-type" id="foundationTypeText">Blood Foundation</div>
+                    <div class="foundation-role">You are an Admin</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Search Section -->
         <div class="search-section">
             <h2>Find a Donor</h2>
@@ -77,11 +93,13 @@
         </div>
 
         
+        <!-- Request Feed CTA -->
+        <div class="request-cta" style="text-align: center; margin: 20px 0;">
+            <a href="requests.html" class="btn-search" style="display: inline-block;">View Blood Requests</a>
+        </div>
+
 
     </div>
-
-    <!-- Donor Profile Modal -->
-    <div id="donorModal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
             <div class="modal-header">
@@ -125,6 +143,36 @@
                 <input id="chatInput" type="text" placeholder="Type a message..." style="flex: 1;">
                 <button id="chatSendBtn" class="btn-view">Send</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Foundation Application Modal -->
+    <div id="foundationApplyModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: left;">
+            <span class="close-modal">&times;</span>
+            <div class="modal-header" style="text-align: center;">
+                <h2>Apply to Create a Foundation</h2>
+            </div>
+            <form id="foundationApplyForm" style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label style="font-weight:600;">Foundation Name</label>
+                    <input type="text" id="foundationName" placeholder="Foundation name" required style="width:100%; padding:10px; border:1px solid #eee; border-radius:10px;">
+                </div>
+                <div>
+                    <label style="font-weight:600;">Location (city/area)</label>
+                    <input type="text" id="foundationLocation" placeholder="City or Area" required style="width:100%; padding:10px; border:1px solid #eee; border-radius:10px;">
+                </div>
+                <div>
+                    <label style="font-weight:600;">Short Description</label>
+                    <textarea id="foundationDescription" placeholder="Describe your foundation" rows="3" style="width:100%; padding:10px; border:1px solid #eee; border-radius:10px;"></textarea>
+                </div>
+                <div>
+                    <label style="font-weight:600;">Contact Info (phone or email)</label>
+                    <input type="text" id="foundationContact" placeholder="Phone or Email" required style="width:100%; padding:10px; border:1px solid #eee; border-radius:10px;">
+                </div>
+                <button type="submit" class="btn-view">Submit Application</button>
+                <div id="foundationApplyStatus" class="status-message-box" style="display:none;"></div>
+            </form>
         </div>
     </div>
 

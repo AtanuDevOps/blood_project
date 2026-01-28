@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const isRequestsPage = document.getElementById('requestsList'); // Requests page
 
     let currentUser = null;
+    let foundationStatusUnsub = null;
+    let donorListDelegated = false;
+    let globalViewProfileListenerAttached = false;
 
     // =========================================================================
     // 2. AUTHENTICATION STATE LISTENER (Runs on all pages)
@@ -38,6 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isProfilePage && user) {
+            const params = new URLSearchParams(window.location.search);
+            const donorId = params.get('id');
+            if (donorId && donorId !== user.uid) {
+                window.location.href = `donor-view.html?id=${encodeURIComponent(donorId)}`;
+                return;
+            }
             loadProfileData(user.uid);
         }
     });
@@ -54,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const db = firebase.firestore();
             db.collection("users").doc(user.uid).get().then((doc) => {
                 const name = doc.exists ? doc.data().name : "User";
+                if (doc.exists && !doc.data().role) {
+                    db.collection("users").doc(user.uid).set({ role: "user" }, { merge: true });
+                }
                 navUserMenu.innerHTML = `
                     <span id="navUserName" style="margin-right: 10px; font-weight: 500;">Hello, ${escapeHtml(name)}</span>
                     <div id="notifContainer" style="position: relative; display: inline-block; margin-right: 8px;">
@@ -66,12 +78,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div id="notifList" style="max-height: 300px; overflow-y: auto;"></div>
                         </div>
                     </div>
+                    <a href="requests.html" class="nav-link" style="margin-right: 10px;">Blood Requests</a>
                     <a href="profile.html" class="btn-view" style="padding: 5px 15px; margin-right: 5px; font-size: 12px;">Profile</a>
+                    <button id="applyFoundationBtn" class="btn-view" style="padding: 5px 15px; margin-right: 5px; font-size: 12px;">Apply to Create a Foundation</button>
+                    <div id="foundationStatusMsg" class="status-message-box" style="display:none; max-width: 260px;"></div>
+                    <a id="openFoundationDashboardBtn" href="#" class="btn-view" style="display:none; padding: 5px 15px; font-size: 12px; margin-top: 8px;">Foundation Dashboard</a>
                     <button id="logoutBtn" class="btn-logout" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
                 `;
                 // Re-attach logout listener since we replaced innerHTML
                 document.getElementById('logoutBtn').addEventListener('click', logout);
                 initNotifications(user.uid);
+                initFoundationApplication();
+                initFoundationStatusListener(user.uid);
             });
         } else {
             // User Guest
@@ -109,6 +127,149 @@ document.addEventListener('DOMContentLoaded', () => {
         // Modal Logic
         initModal();
         
+    }
+
+    // =========================================================================
+    // Foundation Application (Step 2)
+    // =========================================================================
+    function initFoundationApplication() {
+        const btn = document.getElementById('applyFoundationBtn');
+        const modal = document.getElementById('foundationApplyModal');
+        const closeEls = modal ? modal.querySelectorAll('.close-modal') : [];
+        const form = document.getElementById('foundationApplyForm');
+        const statusBox = document.getElementById('foundationApplyStatus');
+        if (btn && modal) {
+            // Open modal
+            btn.addEventListener('click', () => {
+                modal.classList.add('show');
+                if (statusBox) {
+                    statusBox.style.display = 'none';
+                    statusBox.textContent = '';
+                }
+                if (form) form.reset();
+            });
+        }
+        // Close modal
+        if (closeEls && closeEls.length) {
+            closeEls.forEach(el => el.addEventListener('click', () => modal.classList.remove('show')));
+        }
+        // Submit
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const user = firebase.auth().currentUser;
+                if (!user) {
+                    alert("Please log in to apply.");
+                    return;
+                }
+                const db = firebase.firestore();
+                const foundationName = document.getElementById('foundationName')?.value.trim();
+                const location = document.getElementById('foundationLocation')?.value.trim();
+                const description = document.getElementById('foundationDescription')?.value.trim();
+                const contact = document.getElementById('foundationContact')?.value.trim();
+                if (!foundationName || !location || !contact) {
+                    alert("Please fill in required fields.");
+                    return;
+                }
+                try {
+                    const existingSnap = await db.collection('foundationApplications')
+                        .where('applicantUserId', '==', user.uid)
+                        .limit(1)
+                        .get();
+                    if (!existingSnap.empty) {
+                        if (statusBox) {
+                            statusBox.textContent = "You already submitted an application.";
+                            statusBox.classList.remove('approved','pending','rejected');
+                            statusBox.style.display = 'block';
+                        } else {
+                            alert("You already submitted an application.");
+                        }
+                        return;
+                    }
+                    await db.collection('foundationApplications').add({
+                        foundationName,
+                        location,
+                        description: description || "",
+                        contact,
+                        applicantUserId: user.uid,
+                        status: "pending",
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    if (statusBox) {
+                        statusBox.textContent = "Your application is under review";
+                        statusBox.classList.add('visible','pending');
+                        statusBox.style.display = 'block';
+                    } else {
+                        alert("Your application is under review");
+                    }
+                    modal.classList.remove('show');
+                } catch (err) {
+                    console.error("Application error:", err);
+                    alert("Error submitting application: " + err.message);
+                }
+            });
+        }
+    }
+
+    function initFoundationStatusListener(uid) {
+        const db = firebase.firestore();
+        const btn = document.getElementById('applyFoundationBtn');
+        const msg = document.getElementById('foundationStatusMsg');
+        const dashBtn = document.getElementById('openFoundationDashboardBtn');
+        if (foundationStatusUnsub) {
+            try { foundationStatusUnsub(); } catch(e) {}
+            foundationStatusUnsub = null;
+        }
+        foundationStatusUnsub = db.collection('foundationApplications')
+            .where('applicantUserId','==',uid)
+            .limit(1)
+            .onSnapshot((snap) => {
+                if (!msg) return;
+                if (snap.empty) {
+                    if (btn) { btn.disabled = false; btn.style.display = 'inline-block'; }
+                    msg.style.display = 'none';
+                    msg.textContent = '';
+                    msg.classList.remove('approved','pending','visible');
+                    if (dashBtn) dashBtn.style.display = 'none';
+                    return;
+                }
+                const data = snap.docs[0].data() || {};
+                const status = data.status || 'pending';
+                if (status === 'pending') {
+                    if (btn) btn.style.display = 'none';
+                    msg.textContent = "Your foundation creation request is under review.";
+                    msg.classList.remove('approved','rejected');
+                    msg.classList.add('visible','pending');
+                    msg.style.display = 'block';
+                    if (dashBtn) dashBtn.style.display = 'none';
+                } else if (status === 'approved') {
+                    if (btn) btn.style.display = 'none';
+                    msg.textContent = "Your foundation has been approved 🎉";
+                    msg.classList.remove('pending','rejected');
+                    msg.classList.add('visible','approved');
+                    msg.style.display = 'block';
+                    if (dashBtn) {
+                        dashBtn.href = 'foundation-dashboard.html';
+                        dashBtn.style.display = 'inline-block';
+                        dashBtn.onclick = function() {
+                            try {
+                                console.log('[Navigation] Navigating to Foundation Dashboard:', dashBtn.href);
+                            } catch (navErr) {
+                                console.warn('[Navigation] Foundation Dashboard navigation error:', navErr);
+                            }
+                            return true;
+                        };
+                    }
+                } else {
+                    if (btn) btn.style.display = 'inline-block';
+                    msg.style.display = 'none';
+                    msg.textContent = '';
+                    msg.classList.remove('approved','pending','visible');
+                    if (dashBtn) dashBtn.style.display = 'none';
+                }
+            }, (err) => {
+                console.error("Foundation status listen error:", err);
+            });
     }
 
     function fetchDonors(nameFilter = "", locationFilter = "", bloodFilter = "") {
@@ -201,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="card-info">
                     <i class="fa-solid fa-location-dot"></i> ${escapeHtml(location)}
                 </div>
-                <button class="btn-view" 
+                <button class="btn-view view-profile" 
                     data-id="${id}" 
                     data-name="${escapeHtml(name)}"
                     data-blood="${escapeHtml(blood)}"
@@ -230,16 +391,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function attachViewProfileEvents() {
-        const viewButtons = document.querySelectorAll('.btn-view');
-        viewButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Check if it's the navbar profile button (which is an anchor tag, not button usually, but just in case)
-                if(e.target.tagName === 'A') return;
-
-                const data = e.target.dataset;
-                openModal(data);
-            });
+        if (globalViewProfileListenerAttached) return;
+        globalViewProfileListenerAttached = true;
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.view-profile');
+            if (!btn) return;
+            const donorId = btn.dataset.id;
+            if (!donorId) return;
+            const locked = btn.dataset.locked === "true";
+            if (locked) {
+                alert("This donor profile is locked. Please send a request.");
+                return;
+            }
+            window.location.href = `donor-view.html?id=${encodeURIComponent(donorId)}`;
         });
+    }
+
+    function viewProfile(donorId) {
+        const db = firebase.firestore();
+        db.collection("users").doc(donorId).get().then((doc) => {
+            if (!doc.exists) return;
+            const u = doc.data();
+            let isCooldown = false;
+            let daysText = "";
+            if (u && u.nextAvailableDate && u.nextAvailableDate.toDate) {
+                const nextDate = u.nextAvailableDate.toDate();
+                const now = new Date();
+                if (nextDate > now) {
+                    isCooldown = true;
+                    const diffTime = Math.abs(nextDate - now);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    daysText = `Back in ${diffDays} days`;
+                }
+            }
+            const dataset = {
+                id: donorId,
+                name: u?.name || "",
+                blood: u?.bloodGroup || "",
+                location: u?.location || "",
+                phone: isCooldown ? "" : (u?.phone || ""),
+                cooldown: isCooldown,
+                locked: !!u?.profileLocked,
+                daystext: daysText
+            };
+            openModal(dataset);
+        }).catch((err) => {
+            console.error("viewProfile() error:", err);
+        });
+    }
+
+    function openDonorProfile(donorId) {
+        viewProfile(donorId);
     }
 
     function getOrSetRequesterId() {
@@ -744,7 +946,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     email: email,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     avatarText: avatarText,
-                    avatarColor: avatarColor
+                    avatarColor: avatarColor,
+                    role: "user"
                 }).then(() => {
                     return db.collection("donors").doc(uid).set({
                         avatarText: avatarText,
@@ -837,6 +1040,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Object.keys(updates).length > 0) {
                     db.collection("users").doc(uid).set(updates, { merge: true });
                     db.collection("donors").doc(uid).set(updates, { merge: true });
+                }
+
+                // Privacy & Access Control
+                const viewer = firebase.auth().currentUser;
+                const isOwner = !!viewer && viewer.uid === uid;
+                const isLocked = !!data.profileLocked;
+                const phoneEl = document.getElementById('userPhone');
+                const chatSendBtn = document.getElementById('chatSendBtn');
+                if (!isOwner) {
+                    // Prevent non-owners from toggling lock
+                    if (lockToggle) {
+                        lockToggle.disabled = true;
+                    }
+                    if (isLocked) {
+                        if (!viewer) {
+                            if (phoneEl) phoneEl.textContent = "Contact info hidden. Login and request access.";
+                            if (chatSendBtn) chatSendBtn.disabled = true;
+                        } else {
+                            const docId = `${uid}_${viewer.uid}`;
+                            db.collection('contactRequests').doc(docId).get().then((reqDoc) => {
+                                const approved = reqDoc.exists && reqDoc.data()?.status === 'approved';
+                                if (approved) {
+                                    if (phoneEl) phoneEl.textContent = data.phone || '-';
+                                    if (chatSendBtn) chatSendBtn.disabled = false;
+                                } else {
+                                    if (phoneEl) phoneEl.textContent = "Contact info hidden until donor approval";
+                                    if (chatSendBtn) chatSendBtn.disabled = true;
+                                }
+                            }).catch(() => {
+                                if (phoneEl) phoneEl.textContent = "Contact info hidden until donor approval";
+                                if (chatSendBtn) chatSendBtn.disabled = true;
+                            });
+                        }
+                    } else {
+                        // Unlocked: show phone; chat allowed (UI button is not added here)
+                        if (phoneEl) phoneEl.textContent = data.phone || '-';
+                        if (chatSendBtn) chatSendBtn.disabled = false;
+                    }
+                } else {
+                    // Owner always sees full info
+                    if (phoneEl) phoneEl.textContent = data.phone || '-';
+                    if (chatSendBtn) chatSendBtn.disabled = false;
                 }
                 
                 // Profile Lock Toggle
@@ -1467,6 +1712,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.openChatFromRequest = function(requestId, donorId, requesterId) {
         openChat(requestId, donorId, requesterId, null);
+    }
+    window.openChat = function(chatId, donorId, requesterId, donorName) {
+        openChat(chatId, donorId, requesterId, donorName);
     }
 
     // Initialize chat UI if present

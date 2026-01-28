@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donor View</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<nav class="navbar">
+<div class="nav-container">
+<div class="logo"><i class="fa-solid fa-droplet"></i> BloodConnect</div>
+<div class="user-menu"><span id="navUserName">Loading...</span></div>
+</div>
+</nav>
+<div class="main-container">
+<div class="profile-card" style="max-width: 480px; margin: 0 auto;">
+<div class="profile-header">
+<div class="profile-avatar" id="avatarContainer" style="position: relative; overflow: hidden;">
+<i class="fa-solid fa-user" id="defaultAvatarIcon"></i>
+<img id="profilePhoto" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;">
+</div>
+<h1 id="userName">Loading...</h1>
+<p>Donor</p>
+</div>
+<div class="profile-details">
+<div class="detail-item">
+<span class="detail-label">Blood Group</span>
+<span class="detail-value"><span class="blood-group-badge" id="userBlood">-</span></span>
+</div>
+<div class="detail-item">
+<span class="detail-label">Location</span>
+<span class="detail-value" id="userLocation">-</span>
+</div>
+</div>
+<div class="action-buttons" style="display:flex;gap:10px;justify-content:center;margin-top:10px;">
+<button id="requestAccessBtn" class="btn-view" style="display:none;">Request Access</button>
+<button id="chatBtn" class="btn-view" style="display:none;"><i class="fa-regular fa-comments"></i> Chat</button>
+</div>
+<div id="requestStatusMsg" class="status-message-box" style="display:none;"></div>
+</div>
+</div>
+<div id="chatModal" class="modal">
+<div class="modal-content" style="max-width: 500px; text-align: left;">
+<span class="close-modal">&times;</span>
+<div class="modal-header" style="text-align: center;">
+<h2 id="chatTitle">Conversation</h2>
+</div>
+<div id="chatMessages" style="max-height: 300px; overflow-y: auto; padding: 10px;"></div>
+<div style="display: flex; gap: 10px; margin-top: 10px;">
+<input id="chatInput" type="text" placeholder="Type a message..." style="flex: 1;">
+<button id="chatSendBtn" class="btn-view">Send</button>
+</div>
+</div>
+</div>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const params = new URLSearchParams(window.location.search);
+  const donorId = params.get('id');
+  const db = firebase.firestore();
+  const userNameEl = document.getElementById('userName');
+  const userBloodEl = document.getElementById('userBlood');
+  const userLocationEl = document.getElementById('userLocation');
+  const requestBtn = document.getElementById('requestAccessBtn');
+  const chatBtn = document.getElementById('chatBtn');
+  const statusMsg = document.getElementById('requestStatusMsg');
+  const avatarContainer = document.getElementById('avatarContainer');
+  const profilePhoto = document.getElementById('profilePhoto');
+  const defaultIcon = document.getElementById('defaultAvatarIcon');
+  function setStatus(text, cls) {
+    statusMsg.textContent = text;
+    statusMsg.className = 'status-message-box visible ' + (cls || '');
+    statusMsg.style.display = 'block';
+  }
+  firebase.auth().onAuthStateChanged(function(user) {
+    db.collection('users').doc(donorId).get().then(function(doc) {
+      if (!doc.exists) return;
+      const data = doc.data();
+      userNameEl.textContent = data.name || 'Donor';
+      userBloodEl.textContent = data.bloodGroup || '-';
+      userLocationEl.textContent = data.location || '-';
+      const palette = ['#CE1126','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#5D4037','#546E7A'];
+      const baseText = (data.name || '').trim().charAt(0).toUpperCase();
+      const altText = (data.bloodGroup || '').trim();
+      const avatarText = data.avatarText || (baseText || altText || '?');
+      const avatarColor = data.avatarColor || palette[Math.floor(Math.random() * palette.length)];
+      const photoUrl = data.profilePhotoUrl || data.photoURL || '';
+      if (profilePhoto && photoUrl) {
+        profilePhoto.src = photoUrl;
+        profilePhoto.style.display = 'block';
+        if (defaultIcon) defaultIcon.style.display = 'none';
+        if (avatarContainer) {
+          avatarContainer.style.backgroundColor = avatarColor;
+          avatarContainer.style.color = '#ffffff';
+          avatarContainer.textContent = '';
+        }
+      } else {
+        if (profilePhoto) profilePhoto.style.display = 'none';
+        const icon = data.avatarIcon || '';
+        if (defaultIcon && icon) {
+          defaultIcon.className = 'fa-solid fa-' + icon;
+          defaultIcon.style.display = 'block';
+          if (avatarContainer) avatarContainer.textContent = '';
+        } else {
+          if (defaultIcon) defaultIcon.style.display = 'none';
+          if (avatarContainer) {
+            avatarContainer.textContent = avatarText;
+            avatarContainer.style.backgroundColor = avatarColor;
+            avatarContainer.style.color = '#ffffff';
+          }
+        }
+      }
+      const isLocked = !!data.profileLocked;
+      const requesterId = (function() {
+        if (user) return user.uid;
+        var anonId = localStorage.getItem('anonymousRequesterId');
+        if (!anonId) {
+          anonId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('anonymousRequesterId', anonId);
+        }
+        return anonId;
+      })();
+      const docId = donorId + '_' + requesterId;
+      function resolveChatId(dId, rId) {
+        var sorted = [dId, rId].sort().join('_');
+        var alt = dId + '_' + rId;
+        return db.collection('chats').doc(sorted).get().then(function(snap){
+          if (snap.exists) return sorted;
+          return db.collection('chats').doc(alt).get().then(function(asnap){
+            return asnap.exists ? alt : sorted;
+          });
+        });
+      }
+      if (!isLocked) {
+        chatBtn.style.display = 'inline-block';
+        chatBtn.onclick = function() {
+          resolveChatId(donorId, requesterId).then(function(cid){
+            window.openChat(cid, donorId, requesterId, data.name || 'Donor');
+          });
+        };
+        setStatus('Profile unlocked. You can chat.', 'approved');
+        requestBtn.style.display = 'none';
+        return;
+      }
+      db.collection('contactRequests').doc(docId).get().then(function(r) {
+        const approved = r.exists && r.data().status === 'approved';
+        if (approved) {
+          chatBtn.style.display = 'inline-block';
+          chatBtn.onclick = function() {
+            resolveChatId(donorId, requesterId).then(function(cid){
+              window.openChat(cid, donorId, requesterId, data.name || 'Donor');
+            });
+          };
+          setStatus('Access approved. You can chat.', 'approved');
+          requestBtn.style.display = 'none';
+        } else {
+          chatBtn.style.display = 'none';
+          requestBtn.style.display = 'inline-block';
+          setStatus('This profile is locked. Request access to contact.', 'pending');
+          requestBtn.onclick = function() {
+            if (!user) { alert('Please log in to request access.'); return; }
+            requestBtn.disabled = true;
+            requestBtn.textContent = 'Sending...';
+            db.collection('contactRequests').doc(docId).set({
+              donorId: donorId,
+              requesterId: requesterId,
+              requesterName: user.displayName || 'User',
+              status: 'pending',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(function() {
+              setStatus('Request sent. Waiting for approval.', 'pending');
+              requestBtn.style.display = 'none';
+              db.collection('notifications').add({
+                toUserId: donorId,
+                fromUserId: requesterId,
+                type: 'request',
+                text: 'Contact request',
+                read: false,
+                link: 'profile.html',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }).catch(function() {
+              requestBtn.disabled = false;
+              requestBtn.textContent = 'Request Access';
+              alert('Failed to send request. Please try again.');
+            });
+          };
+        }
+      });
+    });
+  });
+});
+</script>
+</body>
+</html>

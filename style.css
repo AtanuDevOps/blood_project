@@ -168,6 +168,8 @@ body {
     text-align: center;
     transition: transform 0.3s, box-shadow 0.3s;
     position: relative;
+    overflow: hidden;
+    position: relative;
 }
 
 .donor-card:hover {
@@ -177,7 +179,6 @@ body {
 
 .card-avatar {
     width: 70px;
-    height: 70px;
     background: #ffebee;
     color: #CE1126;
     border-radius: 50%;
@@ -209,12 +210,36 @@ body {
     font-size: 14px;
     color: #666;
     margin-bottom: 20px;
+    position: static;
 }
 
 .card-info i {
     color: #CE1126;
     margin-right: 5px;
 }
+
+/* Donor Card Safe Positioning (prevent sticky corner bugs) */
+.donor-grid { position: relative; }
+.donor-card * { float: none; }
+.donor-card .card-name,
+.donor-card .card-blood,
+.donor-card .card-info,
+.donor-card .card-avatar {
+    position: static;
+}
+
+/* Optional card status badge used by JS template */
+.card-status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #fff;
+}
+.card-status-badge.available { background: #43A047; }
+.card-status-badge.cooldown { background: #FB8C00; }
 
 .btn-view {
     background: white;
@@ -671,6 +696,65 @@ body {
         margin-bottom: 8px !important;
     }
     .profile-card .status-indicator { margin: 12px auto !important; }
+}
+/* =========================================
+/* =========================================
+   Foundation Dashboard - Info Card (UI only)
+   ========================================= */
+.foundation-info-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.foundation-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.foundation-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #333;
+    font-size: 18px;
+}
+.foundation-title i {
+    color: #CE1126;
+}
+.foundation-status-badge {
+    background: #43A047;
+    color: #fff;
+    border-radius: 16px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.foundation-card-body {
+    margin-top: 10px;
+}
+.foundation-type {
+    color: #555;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+.foundation-role {
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+}
+@media (max-width: 768px) {
+    .foundation-info-card {
+        border-radius: 16px;
+        padding: 18px;
+        margin-top: 8px;
+    }
+    .foundation-title {
+        font-size: 20px;
+    }
 }
 /* =========================================
    Profile Action Buttons (Edit & Lock state)
